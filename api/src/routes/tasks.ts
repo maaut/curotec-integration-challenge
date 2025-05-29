@@ -5,12 +5,14 @@ import {
   getTaskByIdController,
   updateTaskController,
   deleteTaskController,
+  toggleTaskCompletionController,
 } from "../controllers/task.controller";
 import { validateRequest } from "../middlewares/validateRequest";
 import {
   createTaskSchema,
   updateTaskSchema,
   taskIdSchema,
+  toggleTaskSchema,
 } from "../validations/task.validation";
 import { authMiddleware } from "../middlewares/auth.middleware";
 
@@ -47,6 +49,14 @@ router.delete(
   authMiddleware,
   validateRequest(taskIdSchema),
   deleteTaskController
+);
+
+// Route for toggling task completion status
+router.put(
+  "/tasks/:id/toggle",
+  authMiddleware,
+  validateRequest(toggleTaskSchema),
+  toggleTaskCompletionController
 );
 
 export default router;

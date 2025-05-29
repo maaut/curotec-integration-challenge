@@ -127,3 +127,29 @@ export const deleteTask = async (
     throw error;
   }
 };
+
+export const toggleTaskCompletion = async (
+  id: string,
+  completed: boolean,
+  userId: string
+): Promise<Task | null> => {
+  const task = await prisma.task.findFirst({
+    where: { id, userId },
+  });
+
+  if (!task) {
+    return null;
+  }
+
+  try {
+    return await prisma.task.update({
+      where: { id },
+      data: { completed },
+    });
+  } catch (error: any) {
+    if (error.code === "P2025") {
+      return null;
+    }
+    throw error;
+  }
+};

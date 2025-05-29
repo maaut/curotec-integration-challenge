@@ -94,7 +94,7 @@ const TaskList: React.FC = () => {
 
   const handleTableChange = (
     pagination: TablePaginationConfig,
-    filters: Record<string, FilterValue | null>,
+    _filters: Record<string, FilterValue | null>,
     sorter: SorterResult<Task> | SorterResult<Task>[]
   ) => {
     const newParams: Partial<GetAllTasksParams> = {

@@ -1,20 +1,21 @@
 import { useState, useCallback } from "react";
 import { message } from "antd";
-import { taskApi } from "../services/taskApi";
-import type {
-  Task,
-  GetAllTasksParams,
-  // PaginatedTasksResponse, // Not directly returned, but its structure is used in fetchTasks
-} from "../types/task.types";
+import {
+  fetchTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  toggleTaskCompletion,
+} from "../services/taskApi";
+import type { Task, GetAllTasksParams } from "../types/task.types";
 
-// Define state for pagination, sorting, and filters for the hook
 export interface TasksManagerState extends GetAllTasksParams {
   totalTasks: number;
   totalPages: number;
 }
 
 export const useTaskManager = () => {
-  const [messageApi, contextHolder] = message.useMessage(); // For user feedback
+  const [messageApi, contextHolder] = message.useMessage();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export const useTaskManager = () => {
     setTasksStateInternal((prevState) => ({ ...prevState, ...newState }));
   };
 
-  const fetchTasks = useCallback(
+  const fetchTasksInternal = useCallback(
     async (newState?: Partial<TasksManagerState>) => {
       setLoading(true);
       setError(null);
@@ -53,53 +54,55 @@ export const useTaskManager = () => {
       if (apiParams.completed === "all") delete apiParams.completed;
 
       try {
-        const response = await taskApi.getAllTasks(apiParams);
+        const response = await fetchTasks(apiParams);
         setTasks(response.tasks);
         setTasksStateInternal((prev) => ({
           ...prev,
-          ...newState, // Apply incoming new state for parameters like page/limit if they changed
+          ...newState,
           totalTasks: response.total,
           totalPages: response.totalPages,
-          page: response.page, // Ensure current page from response is set
-          limit: response.limit, // Ensure current limit from response is set
+          page: response.page,
+          limit: response.limit,
         }));
       } catch (e) {
         const errorMessage =
           e instanceof Error ? e.message : "Failed to fetch tasks";
         setError(errorMessage);
-        messageApi.error(errorMessage); // Display error message
+        messageApi.error(errorMessage);
       }
       setLoading(false);
     },
-    [tasksState, messageApi] // messageApi added as dependency
+    [tasksState, messageApi]
   );
 
-  const addTask = async (
-    taskData: Omit<Task, "id" | "completed" | "createdAt" | "updatedAt">
+  const addTaskInternal = async (
+    taskData: Omit<Task, "id" | "completed" | "createdAt" | "updatedAt"> & {
+      description?: string;
+    }
   ) => {
     setLoading(true);
     setError(null);
     try {
-      await taskApi.addTask(taskData);
+      await createTask(taskData);
       messageApi.success("Task added successfully!");
-      fetchTasks({ page: 1, search: "" }); // Refetch from first page, clear search potentially
+      fetchTasksInternal();
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Failed to add task";
       setError(errorMessage);
       messageApi.error(errorMessage);
-      throw e; // Re-throw to allow components to handle if needed
+      throw e;
     }
     setLoading(false);
   };
 
-  const updateTask = async (updatedTaskData: Task) => {
+  const updateTaskInternal = async (updatedTaskData: Task) => {
     setLoading(true);
     setError(null);
     try {
-      await taskApi.updateTask(updatedTaskData.id, updatedTaskData);
+      await updateTask(updatedTaskData.id, updatedTaskData);
       messageApi.success("Task updated successfully!");
-      fetchTasks(tasksState); // Refetch with current state
+      fetchTasksInternal();
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Failed to update task";
@@ -110,19 +113,13 @@ export const useTaskManager = () => {
     setLoading(false);
   };
 
-  const deleteTask = async (id: string) => {
+  const deleteTaskInternal = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await taskApi.deleteTask(id);
-      if (result.message) {
-        messageApi.success(result.message || "Task deleted successfully!");
-        if (tasks.length === 1 && tasksState.page && tasksState.page > 1) {
-          fetchTasks({ ...tasksState, page: tasksState.page - 1 });
-        } else {
-          fetchTasks(tasksState);
-        }
-      }
+      await deleteTask(id);
+      messageApi.success("Task deleted successfully!");
+      fetchTasksInternal();
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Failed to delete task";
@@ -133,7 +130,7 @@ export const useTaskManager = () => {
     setLoading(false);
   };
 
-  const toggleComplete = async (id: string) => {
+  const toggleCompleteInternal = async (id: string) => {
     const taskToToggle = tasks.find((task) => task.id === id);
     if (!taskToToggle) return;
 
@@ -149,16 +146,14 @@ export const useTaskManager = () => {
     );
 
     try {
-      await taskApi.updateTask(id, {
-        completed: optimisticallyUpdatedTask.completed,
-      } as any);
+      await toggleTaskCompletion(id, optimisticallyUpdatedTask.completed);
       messageApi.success(
         optimisticallyUpdatedTask.completed
           ? "Task marked as complete!"
           : "Task marked as incomplete!"
       );
       if (tasksState.completed !== "all") {
-        fetchTasks(tasksState);
+        fetchTasksInternal();
       }
     } catch (e: unknown) {
       setTasks((prevTasks) =>
@@ -178,11 +173,11 @@ export const useTaskManager = () => {
     error,
     tasksState,
     contextHolder,
-    fetchTasks,
-    addTask,
-    updateTask,
-    deleteTask,
-    toggleComplete,
+    fetchTasks: fetchTasksInternal,
+    addTask: addTaskInternal,
+    updateTask: updateTaskInternal,
+    deleteTask: deleteTaskInternal,
+    toggleComplete: toggleCompleteInternal,
     setTasksState,
   };
 };

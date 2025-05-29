@@ -55,3 +55,15 @@ export const taskIdSchema = z.object({
     id: z.string({ required_error: "Task ID is required in params" }),
   }),
 });
+
+export const toggleTaskSchema = z.object({
+  params: z.object({
+    id: z.string({ required_error: "Task ID is required in params" }),
+  }),
+  body: z.object({
+    completed: z.boolean({
+      required_error: "Completed status is required",
+      invalid_type_error: "Completed status must be a boolean",
+    }),
+  }),
+});

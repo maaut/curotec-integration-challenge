@@ -1,86 +1,57 @@
-import axios, { AxiosError } from "axios";
+import apiClient from "./axiosConfig";
 import type {
   Task,
   GetAllTasksParams,
   PaginatedTasksResponse,
 } from "../types/task.types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-const handleError = (error: unknown): Error => {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<any>;
-    return new Error(
-      axiosError.response?.data?.errors[0]?.message ||
-        axiosError.response?.data?.message ||
-        "An unknown API error occurred"
-    );
-  }
-
-  return new Error("An unexpected error occurred");
+export const fetchTasks = async (
+  params?: GetAllTasksParams
+): Promise<PaginatedTasksResponse> => {
+  const response = await apiClient.get<PaginatedTasksResponse>("/tasks", {
+    params,
+  });
+  return response.data;
 };
 
-export const taskApi = {
-  getAllTasks: async (
-    params?: GetAllTasksParams
-  ): Promise<PaginatedTasksResponse> => {
-    try {
-      const response = await apiClient.get<PaginatedTasksResponse>("/tasks", {
-        params,
-      });
-      return response.data;
-    } catch (error) {
-      throw handleError(error);
-    }
-  },
+export const createTask = async (taskData: {
+  title: string;
+  description?: string;
+}): Promise<Task> => {
+  const response = await apiClient.post<Task>("/tasks", taskData);
+  return response.data;
+};
 
-  getTaskById: async (id: string): Promise<Task> => {
-    try {
-      const response = await apiClient.get<Task>(`/tasks/${id}`);
-      return response.data;
-    } catch (error) {
-      throw handleError(error);
-    }
-  },
+export const updateTask = async (
+  id: string,
+  taskData: Partial<Task>
+): Promise<Task> => {
+  const {
+    id: taskId,
+    createdAt,
+    updatedAt,
+    userId,
+    ...restOfTaskData
+  } = taskData as any;
+  const response = await apiClient.put<Task>(`/tasks/${id}`, restOfTaskData);
+  return response.data;
+};
 
-  addTask: async (
-    taskData: Omit<Task, "id" | "completed" | "createdAt" | "updatedAt">
-  ): Promise<Task> => {
-    try {
-      const response = await apiClient.post<Task>("/tasks", taskData);
-      return response.data;
-    } catch (error) {
-      throw handleError(error);
-    }
-  },
+export const deleteTask = async (id: string): Promise<void> => {
+  await apiClient.delete(`/tasks/${id}`);
+};
 
-  updateTask: async (
-    id: string,
-    taskData: Partial<
-      Omit<Task, "id" | "completed" | "createdAt" | "updatedAt">
-    >
-  ): Promise<Task> => {
-    try {
-      const response = await apiClient.put<Task>(`/tasks/${id}`, taskData);
-      return response.data;
-    } catch (error) {
-      throw handleError(error);
-    }
-  },
+export const toggleTaskCompletion = async (
+  id: string,
+  completed: boolean
+): Promise<Task> => {
+  const response = await apiClient.put<Task>(`/tasks/${id}/toggle`, {
+    completed,
+  });
+  return response.data;
+};
 
-  deleteTask: async (id: string): Promise<{ message: string }> => {
-    try {
-      await apiClient.delete(`/tasks/${id}`);
-      return { message: "Task deleted successfully" };
-    } catch (error) {
-      throw handleError(error);
-    }
-  },
+export const getTaskById = async (id: string): Promise<Task> => {
+  const response = await apiClient.get<Task>(`/tasks/${id}`);
+  return response.data;
 };

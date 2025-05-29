@@ -161,3 +161,43 @@ export const deleteTaskController = async (
     return;
   }
 };
+
+export const toggleTaskCompletionController = async (
+  req: Request<{ id: string }, {}, { completed: boolean }>,
+  res: Response
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const userId = req.user.id;
+  const { id: taskId } = req.params;
+  const { completed } = req.body;
+
+  // Basic validation, though Zod schema will handle it more robustly
+  if (typeof completed !== "boolean") {
+    res.status(400).json({ error: "'completed' must be a boolean" });
+    return;
+  }
+
+  try {
+    const task = await TaskService.toggleTaskCompletion(
+      taskId,
+      completed,
+      userId
+    );
+    if (task) {
+      res.json(task);
+    } else {
+      res.status(404).json({ error: "Task not found or not owned by user" });
+    }
+    return;
+  } catch (error: any) {
+    console.error(
+      "Controller - Failed to toggle task completion:",
+      error.message || error
+    );
+    res.status(500).json({ error: "Failed to toggle task completion" });
+    return;
+  }
+};

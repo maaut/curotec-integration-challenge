@@ -12,7 +12,9 @@ interface TaskContextType {
   tasksState: TasksManagerState;
   fetchTasks: (newState?: Partial<TasksManagerState>) => Promise<void>;
   addTask: (
-    task: Omit<Task, "id" | "completed" | "createdAt" | "updatedAt">
+    task: Omit<Task, "id" | "completed" | "createdAt" | "updatedAt"> & {
+      description?: string;
+    }
   ) => Promise<void>;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
