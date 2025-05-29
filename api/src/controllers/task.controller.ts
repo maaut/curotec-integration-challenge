@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as TaskService from "../services/task.service";
 import { CreateTaskDto, UpdateTaskDto } from "../dtos/task.dto";
+import { GetAllTasksParams } from "../types/task.types";
 
 export const createTaskController = async (
   req: Request<{}, {}, CreateTaskDto>,
@@ -25,8 +26,26 @@ export const createTaskController = async (
 
 export const getAllTasksController = async (req: Request, res: Response) => {
   try {
-    const tasks = await TaskService.getAllTasks();
-    res.json(tasks);
+    const { page, limit, sortBy, sortOrder, completed, search } =
+      req.query as unknown as GetAllTasksParams;
+
+    const params: GetAllTasksParams = {
+      page: page ? parseInt(String(page), 10) : undefined,
+      limit: limit ? parseInt(String(limit), 10) : undefined,
+      sortBy: sortBy ? String(sortBy) : undefined,
+      sortOrder: sortOrder ? (String(sortOrder) as "asc" | "desc") : undefined,
+      completed: completed
+        ? (String(completed) as "true" | "false" | "all")
+        : undefined,
+      search: search ? String(search) : undefined,
+    };
+
+    Object.keys(params).forEach(
+      (key) => (params as any)[key] === undefined && delete (params as any)[key]
+    );
+
+    const result = await TaskService.getAllTasks(params);
+    res.json(result);
   } catch (error: any) {
     console.error(
       "Controller - Failed to retrieve tasks:",

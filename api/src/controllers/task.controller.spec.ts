@@ -8,13 +8,15 @@ import {
   deleteTaskController,
 } from "./task.controller";
 import { CreateTaskDto, UpdateTaskDto } from "../dtos/task.dto";
+import { PaginatedTasksResponse, GetAllTasksParams } from "../types/task.types";
 
 jest.mock("../services/task.service");
 
-const mockRequest = (body: any = {}, params: any = {}) =>
+const mockRequest = (body: any = {}, params: any = {}, query: any = {}) =>
   ({
     body,
     params,
+    query,
   } as Request<any, {}, any, any>);
 
 const mockResponse = () => {
@@ -72,17 +74,101 @@ describe("Task Controller", () => {
   });
 
   describe("getAllTasksController", () => {
-    it("should return all tasks and status 200", async () => {
+    it("should return paginated tasks and status 200 with default params", async () => {
       const req = mockRequest();
       const res = mockResponse();
-      const tasks = [{ id: "1", title: "Test Task", completed: false }];
-      (TaskService.getAllTasks as jest.Mock).mockResolvedValue(tasks);
+      const mockServiceResponse: PaginatedTasksResponse = {
+        tasks: [
+          {
+            id: "1",
+            title: "Test Task",
+            description: "",
+            completed: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      };
+      (TaskService.getAllTasks as jest.Mock).mockResolvedValue(
+        mockServiceResponse
+      );
 
       await getAllTasksController(req, res);
 
-      expect(TaskService.getAllTasks).toHaveBeenCalled();
+      expect(TaskService.getAllTasks).toHaveBeenCalledWith({});
       expect(res.status).not.toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith(tasks);
+      expect(res.json).toHaveBeenCalledWith(mockServiceResponse);
+    });
+
+    it("should pass query parameters to TaskService.getAllTasks and return paginated response", async () => {
+      const queryParams: GetAllTasksParams = {
+        page: 2,
+        limit: 5,
+        sortBy: "title",
+        sortOrder: "asc",
+        completed: "true",
+        search: "findme",
+      };
+      const req = mockRequest({}, {}, queryParams);
+      const res = mockResponse();
+      const mockServiceResponse: PaginatedTasksResponse = {
+        tasks: [],
+        total: 0,
+        page: 2,
+        limit: 5,
+        totalPages: 0,
+      };
+      (TaskService.getAllTasks as jest.Mock).mockResolvedValue(
+        mockServiceResponse
+      );
+
+      await getAllTasksController(req, res);
+
+      const expectedServiceParams: GetAllTasksParams = {
+        page: 2,
+        limit: 5,
+        sortBy: "title",
+        sortOrder: "asc",
+        completed: "true",
+        search: "findme",
+      };
+
+      expect(TaskService.getAllTasks).toHaveBeenCalledWith(
+        expectedServiceParams
+      );
+      expect(res.json).toHaveBeenCalledWith(mockServiceResponse);
+    });
+
+    it("should handle partial query parameters correctly", async () => {
+      const queryParams = { page: "3", completed: "false" };
+      const req = mockRequest({}, {}, queryParams);
+      const res = mockResponse();
+      const mockServiceResponse: PaginatedTasksResponse = {
+        tasks: [],
+        total: 0,
+        page: 3,
+        limit: 10,
+        totalPages: 0,
+      };
+      (TaskService.getAllTasks as jest.Mock).mockResolvedValue(
+        mockServiceResponse
+      );
+
+      await getAllTasksController(req, res);
+
+      const expectedServiceParams: Partial<GetAllTasksParams> = {
+        page: 3,
+        completed: "false",
+      };
+
+      expect(TaskService.getAllTasks).toHaveBeenCalledWith(
+        expectedServiceParams
+      );
+      expect(res.json).toHaveBeenCalledWith(mockServiceResponse);
     });
 
     it("should return 500 if service throws an error", async () => {

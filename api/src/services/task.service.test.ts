@@ -6,6 +6,10 @@ import {
   deleteTask,
 } from "./task.service";
 import { PrismaClient, Task } from "../../generated/prisma";
+import type {
+  GetAllTasksParams,
+  PaginatedTasksResponse,
+} from "../types/task.types";
 
 jest.mock("../../generated/prisma", () => {
   const mPrismaClient = {
@@ -15,6 +19,7 @@ jest.mock("../../generated/prisma", () => {
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      count: jest.fn(),
     },
   };
   return { PrismaClient: jest.fn(() => mPrismaClient) };
@@ -87,30 +92,170 @@ describe("Task Service", () => {
   });
 
   describe("getAllTasks", () => {
-    it("should return all tasks", async () => {
-      const expectedTasks: Task[] = [
-        {
-          id: "1",
-          title: "Task 1",
-          description: "",
-          completed: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: "2",
-          title: "Task 2",
-          description: "",
-          completed: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
-      (prisma.task.findMany as jest.Mock).mockResolvedValue(expectedTasks);
+    const mockTasks: Task[] = [
+      {
+        id: "1",
+        title: "Task 1",
+        description: "First task",
+        completed: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "2",
+        title: "Task 2",
+        description: "Second task",
+        completed: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    it("should return paginated tasks with default parameters", async () => {
+      (prisma.task.findMany as jest.Mock).mockResolvedValue(mockTasks);
+      (prisma.task.count as jest.Mock).mockResolvedValue(mockTasks.length);
 
       const result = await getAllTasks();
-      expect(prisma.task.findMany).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(expectedTasks);
+
+      expect(prisma.task.findMany).toHaveBeenCalledWith({
+        skip: 0,
+        take: 10,
+        where: {},
+        orderBy: { createdAt: "desc" },
+      });
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: {} });
+      expect(result).toEqual<PaginatedTasksResponse>({
+        tasks: mockTasks,
+        total: mockTasks.length,
+        page: 1,
+        limit: 10,
+        totalPages: Math.ceil(mockTasks.length / 10),
+      });
+    });
+
+    it("should apply pagination parameters", async () => {
+      const params: GetAllTasksParams = { page: 2, limit: 5 };
+      (prisma.task.findMany as jest.Mock).mockResolvedValue(
+        mockTasks.slice(0, 5)
+      );
+      (prisma.task.count as jest.Mock).mockResolvedValue(10);
+
+      const result = await getAllTasks(params);
+
+      expect(prisma.task.findMany).toHaveBeenCalledWith({
+        skip: 5,
+        take: 5,
+        where: {},
+        orderBy: { createdAt: "desc" },
+      });
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: {} });
+      expect(result.page).toBe(2);
+      expect(result.limit).toBe(5);
+      expect(result.total).toBe(10);
+      expect(result.totalPages).toBe(2);
+    });
+
+    it("should apply sorting parameters", async () => {
+      const params: GetAllTasksParams = { sortBy: "title", sortOrder: "asc" };
+      (prisma.task.findMany as jest.Mock).mockResolvedValue(mockTasks);
+      (prisma.task.count as jest.Mock).mockResolvedValue(mockTasks.length);
+
+      await getAllTasks(params);
+
+      expect(prisma.task.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { title: "asc" },
+        })
+      );
+    });
+
+    it("should apply filtering for completed tasks", async () => {
+      const params: GetAllTasksParams = { completed: "true" };
+      (prisma.task.findMany as jest.Mock).mockResolvedValue(
+        mockTasks.filter((t) => t.completed)
+      );
+      (prisma.task.count as jest.Mock).mockResolvedValue(1);
+
+      await getAllTasks(params);
+      const expectedWhere = { completed: true };
+      expect(prisma.task.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expectedWhere,
+        })
+      );
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: expectedWhere });
+    });
+
+    it("should apply filtering for incomplete tasks", async () => {
+      const params: GetAllTasksParams = { completed: "false" };
+      (prisma.task.findMany as jest.Mock).mockResolvedValue(
+        mockTasks.filter((t) => !t.completed)
+      );
+      (prisma.task.count as jest.Mock).mockResolvedValue(1);
+
+      await getAllTasks(params);
+      const expectedWhere = { completed: false };
+      expect(prisma.task.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expectedWhere,
+        })
+      );
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: expectedWhere });
+    });
+
+    it("should not filter by completed if 'all' is specified", async () => {
+      const params: GetAllTasksParams = { completed: "all" };
+      (prisma.task.findMany as jest.Mock).mockResolvedValue(mockTasks);
+      (prisma.task.count as jest.Mock).mockResolvedValue(mockTasks.length);
+
+      await getAllTasks(params);
+      expect(prisma.task.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
+        })
+      );
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: {} });
+    });
+
+    it("should apply search filter for title and description", async () => {
+      const params: GetAllTasksParams = { search: "TestSearch" };
+      (prisma.task.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.task.count as jest.Mock).mockResolvedValue(0);
+
+      await getAllTasks(params);
+      const expectedWhere = {
+        OR: [
+          { title: { contains: "TestSearch", mode: "insensitive" } },
+          { description: { contains: "TestSearch", mode: "insensitive" } },
+        ],
+      };
+      expect(prisma.task.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expectedWhere,
+        })
+      );
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: expectedWhere });
+    });
+
+    it("should combine multiple filters (e.g., completed and search)", async () => {
+      const params: GetAllTasksParams = { completed: "true", search: "Task 2" };
+      (prisma.task.findMany as jest.Mock).mockResolvedValue([mockTasks[1]]);
+      (prisma.task.count as jest.Mock).mockResolvedValue(1);
+
+      await getAllTasks(params);
+      const expectedWhere = {
+        completed: true,
+        OR: [
+          { title: { contains: "Task 2", mode: "insensitive" } },
+          { description: { contains: "Task 2", mode: "insensitive" } },
+        ],
+      };
+      expect(prisma.task.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expectedWhere,
+        })
+      );
+      expect(prisma.task.count).toHaveBeenCalledWith({ where: expectedWhere });
     });
   });
 
