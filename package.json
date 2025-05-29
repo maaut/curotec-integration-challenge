@@ -1,0 +1,13 @@
+{
+  "name": "curotec-integration-challenge-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix api && npm install --prefix frontend",
+    "start:dev": "concurrently \"npm:dev --prefix api\" \"npm:dev --prefix frontend\"",
+    "docker:db": "docker-compose up -d"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

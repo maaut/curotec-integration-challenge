@@ -12,6 +12,56 @@ This project contains a Node.js API backend and a React frontend.
 └── docker-compose.yml
 ```
 
+## Getting Started (Simplified with Root Commands)
+
+This project includes a root `package.json` to simplify common tasks like installing dependencies and running development servers for both the API and frontend concurrently.
+
+1.  **Set up root environment variables for Docker Compose:**
+    (This step remains the same - create a `/.env` file as described in the original "API Setup" section if you haven't already.)
+
+    Example `/.env`:
+
+    ```env
+    # Root .env file for Docker Compose
+    POSTGRES_USER=myuser
+    POSTGRES_PASSWORD=mypassword
+    POSTGRES_DB=mydatabase
+    ```
+
+2.  **Start the PostgreSQL database (using Docker Compose):**
+    From the root of the project, you can use the new script:
+
+    ```bash
+    npm run docker:db
+    ```
+
+    Alternatively, run `docker-compose up -d` as before.
+
+3.  **Install all dependencies:**
+    From the root of the project, run:
+
+    ```bash
+    npm install       # Installs root dependencies (like concurrently)
+    npm run install:all # Installs dependencies for api/ and frontend/
+    ```
+
+4.  **Set up API environment variables (`api/.env`):**
+    (See detailed instructions under [API Setup > Getting Started > Set up API environment variables](#set-up-api-environment-variables))
+
+5.  **Set up Frontend Environment Variables (`frontend/.env` - Optional):**
+    (See detailed instructions under [Frontend Setup > Getting Started > Set up Frontend Environment Variables](#set-up-frontend-environment-variables-optional-but-recommended))
+
+6.  **Run the entire stack (API + Frontend):**
+    From the root of the project, run:
+    ```bash
+    npm run start:dev
+    ```
+    This command will start the API (typically on `http://localhost:3000`) and the frontend (typically on `http://localhost:5173`) concurrently. Check your terminal for the exact URLs.
+
+---
+
+_The individual setup instructions for API and Frontend below are still valid if you prefer to manage them separately, but the `npm run start:dev` command from the root is recommended for ease of use during development._
+
 ## API Setup
 
 The API is located in the `api` directory.
@@ -96,7 +146,9 @@ In the `api` directory, you can run the following scripts:
 - `npm run dev`: Starts the development server with `nodemon`.
 - `npm run build`: Compiles TypeScript to JavaScript.
 - `npm start`: Starts the production server.
-- `npm test`: (Placeholder)
+- `npm test`: Runs the Jest test suite.
+- `npm run test:watch`: Runs Jest in watch mode.
+- `npm run test:coverage`: Runs Jest and generates a coverage report.
 
 **Prisma Scripts:**
 
@@ -131,7 +183,20 @@ The frontend application is located in the `frontend` directory.
     npm install
     ```
 
-3.  **Start the development server:**
+3.  **Set up Frontend Environment Variables (Optional but Recommended):**
+    Create a `.env` file in the `frontend` directory (i.e., `frontend/.env`). This file is used by Vite to load environment variables.
+
+    Example `frontend/.env`:
+
+    ```env
+    # Frontend .env file
+    VITE_API_URL=http://localhost:3000/api
+    ```
+
+    - If this file is not present, the application will default to `http://localhost:3000/api` for the API URL.
+    - Ensure `frontend/.env` is added to your `frontend/.gitignore` file if it contains sensitive information (though `VITE_API_URL` is generally not sensitive).
+
+4.  **Start the development server:**
     ```bash
     npm run dev
     ```
@@ -143,3 +208,21 @@ The frontend application is located in the `frontend` directory.
 - `npm run build`: Builds the application for production.
 - `npm run lint`: Lints the codebase (if ESLint is configured).
 - `npm run preview`: Serves the production build locally for preview.
+
+## Running the Full Stack
+
+_This section is superseded by the "Getting Started (Simplified with Root Commands)" section above if you use the root `npm run start:dev` command._
+
+To run the application, you need to have both the backend API and the frontend development server running concurrently.
+
+1.  **Start the API:**
+
+    - Ensure your PostgreSQL database is running (e.g., via `docker-compose up -d` from the root directory).
+    - Navigate to the `api` directory: `cd api`
+    - Start the API development server: `npm run dev` (typically on `http://localhost:3000`)
+
+2.  **Start the Frontend:**
+    - Navigate to the `frontend` directory: `cd frontend`
+    - Start the frontend development server: `npm run dev` (typically on `http://localhost:5173`)
+
+Once both are running, you can access the application via the frontend URL (e.g., `http://localhost:5173`).
