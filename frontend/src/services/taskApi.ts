@@ -1,5 +1,9 @@
 import axios, { AxiosError } from "axios";
-import type { Task } from "../types/task.types";
+import type {
+  Task,
+  GetAllTasksParams,
+  PaginatedTasksResponse,
+} from "../types/task.types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
@@ -24,9 +28,13 @@ const handleError = (error: unknown): Error => {
 };
 
 export const taskApi = {
-  getAllTasks: async (): Promise<Task[]> => {
+  getAllTasks: async (
+    params?: GetAllTasksParams
+  ): Promise<PaginatedTasksResponse> => {
     try {
-      const response = await apiClient.get<Task[]>("/tasks");
+      const response = await apiClient.get<PaginatedTasksResponse>("/tasks", {
+        params,
+      });
       return response.data;
     } catch (error) {
       throw handleError(error);

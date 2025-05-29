@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  List,
+  Table,
   Spin,
   Alert,
   Typography,
@@ -8,30 +8,53 @@ import {
   Modal,
   Form,
   Input,
+  Space,
+  Select,
+  Popconfirm,
+  Checkbox,
 } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
-import TaskItem from "./TaskItem";
+import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useTasks } from "../../providers/TaskContext";
-import type { Task } from "../../types/task.types";
+
+import type { Task, GetAllTasksParams } from "../../types/task.types";
+import type { TableProps, TablePaginationConfig } from "antd/es/table";
+import type { SorterResult, FilterValue } from "antd/es/table/interface";
+import EditTaskModal, {
+  type TaskFormValues as EditTaskFormValues,
+} from "./EditTaskModal";
 
 const { Title } = Typography;
+const { Search } = Input;
+const { Option } = Select;
 
-interface TaskFormValues {
+interface AddTaskFormValues {
   title: string;
   description: string;
 }
 
 const TaskList: React.FC = () => {
-  const { tasks, loading, error, fetchTasks, addTask, updateTask } = useTasks();
+  const {
+    tasks,
+    loading,
+    error,
+    tasksState,
+    fetchTasks,
+    addTask,
+    updateTask,
+    deleteTask,
+    toggleComplete,
+    setTasksState,
+  } = useTasks();
+
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [addForm] = Form.useForm<AddTaskFormValues>();
+
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [addForm] = Form.useForm<TaskFormValues>();
-  const [editForm] = Form.useForm<TaskFormValues>();
 
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+  }, []);
 
   const showAddModal = () => {
     setIsAddModalVisible(true);
@@ -42,37 +65,127 @@ const TaskList: React.FC = () => {
     addForm.resetFields();
   };
 
-  const handleAddTask = async (values: TaskFormValues) => {
+  const handleAddTask = async (values: AddTaskFormValues) => {
     await addTask(values);
-    setIsAddModalVisible(false);
-    addForm.resetFields();
+    handleAddCancel();
   };
 
   const showEditModal = (task: Task) => {
     setEditingTask(task);
-    editForm.setFieldsValue({
-      title: task.title,
-      description: task.description || "",
-    });
     setIsEditModalVisible(true);
   };
 
   const handleEditCancel = () => {
     setIsEditModalVisible(false);
-    setEditingTask(null);
-    editForm.resetFields();
   };
 
-  const handleUpdateTask = async (values: TaskFormValues) => {
+  const handleUpdateTask = async (values: EditTaskFormValues) => {
     if (editingTask) {
       await updateTask({ ...editingTask, ...values });
     }
     setIsEditModalVisible(false);
-    setEditingTask(null);
-    editForm.resetFields();
   };
 
-  if (loading && !tasks.length) {
+  useEffect(() => {
+    if (!isEditModalVisible) {
+      setEditingTask(null);
+    }
+  }, [isEditModalVisible]);
+
+  const handleTableChange = (
+    pagination: TablePaginationConfig,
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<Task> | SorterResult<Task>[]
+  ) => {
+    const newParams: Partial<GetAllTasksParams> = {
+      page: pagination.current,
+      limit: pagination.pageSize,
+    };
+
+    if (!Array.isArray(sorter)) {
+      if (sorter.field && sorter.order) {
+        newParams.sortBy = String(sorter.field);
+        newParams.sortOrder = sorter.order === "ascend" ? "asc" : "desc";
+      } else {
+        newParams.sortBy = "createdAt";
+        newParams.sortOrder = "desc";
+      }
+    }
+
+    setTasksState(newParams);
+    fetchTasks(newParams);
+  };
+
+  const handleSearch = (value: string) => {
+    const newParams = { search: value, page: 1 };
+    setTasksState(newParams);
+    fetchTasks(newParams);
+  };
+
+  const handleStatusFilterChange = (value: "all" | "true" | "false") => {
+    const newParams = { completed: value, page: 1 };
+    setTasksState(newParams);
+    fetchTasks(newParams);
+  };
+
+  const columns: TableProps<Task>["columns"] = [
+    {
+      title: "Status",
+      dataIndex: "completed",
+      key: "completed",
+      width: 100,
+      render: (completed: boolean, record: Task) => (
+        <Checkbox
+          checked={completed}
+          onChange={() => toggleComplete(record.id)}
+          disabled={loading}
+        />
+      ),
+    },
+    {
+      title: "Title",
+      dataIndex: "title",
+      key: "title",
+      sorter: true,
+    },
+    {
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+    },
+    {
+      title: "Created At",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      sorter: true,
+      render: (text: string) => new Date(text).toLocaleDateString(),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 150,
+      render: (_, record: Task) => (
+        <Space size="middle">
+          <Button
+            icon={<EditOutlined />}
+            onClick={() => showEditModal(record)}
+            disabled={loading}
+          />
+          <Popconfirm
+            title="Delete the task?"
+            onConfirm={() => deleteTask(record.id)}
+            okText="Yes"
+            cancelText="No"
+            disabled={loading}
+          >
+            <Button icon={<DeleteOutlined />} danger disabled={loading} />
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  if (loading && !tasks.length && !tasksState.totalTasks) {
     return (
       <Spin
         tip="Loading tasks..."
@@ -108,14 +221,41 @@ const TaskList: React.FC = () => {
           Add Task
         </Button>
       </div>
-      <List
-        itemLayout="horizontal"
+
+      <Space style={{ marginBottom: 16 }}>
+        <Search
+          placeholder="Search tasks..."
+          onSearch={handleSearch}
+          style={{ width: 200 }}
+          allowClear
+          defaultValue={tasksState.search}
+        />
+        <Select
+          defaultValue={tasksState.completed || "all"}
+          style={{ width: 120 }}
+          onChange={handleStatusFilterChange}
+        >
+          <Option value="all">All Statuses</Option>
+          <Option value="true">Completed</Option>
+          <Option value="false">Pending</Option>
+        </Select>
+      </Space>
+
+      <Table
+        columns={columns}
         dataSource={tasks}
-        renderItem={(task) => (
-          <TaskItem key={task.id} task={task} onEdit={showEditModal} />
-        )}
+        rowKey="id"
         loading={loading}
+        pagination={{
+          current: tasksState.page,
+          pageSize: tasksState.limit,
+          total: tasksState.totalTasks,
+          showSizeChanger: true,
+          pageSizeOptions: ["5", "10", "20", "50"],
+        }}
+        onChange={handleTableChange}
       />
+
       <Modal
         title="Add New Task"
         onCancel={handleAddCancel}
@@ -162,62 +302,14 @@ const TaskList: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-      {editingTask && (
-        <Modal
-          title="Edit Task"
-          onCancel={handleEditCancel}
-          open={isEditModalVisible}
-          footer={null}
-        >
-          <Form
-            form={editForm}
-            layout="vertical"
-            onFinish={handleUpdateTask}
-            initialValues={{
-              title: editingTask.title,
-              description: editingTask.description || "",
-            }}
-          >
-            <Form.Item
-              name="title"
-              label="Title"
-              rules={[
-                {
-                  required: true,
-                  message: "Please input the title of the task!",
-                },
-              ]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="description"
-              label="Description"
-              rules={[
-                {
-                  required: true,
-                  message: "Please input the description of the task!",
-                },
-              ]}
-            >
-              <Input.TextArea rows={4} />
-            </Form.Item>
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={loading}
-                style={{ marginRight: 8 }}
-              >
-                Update Task
-              </Button>
-              <Button onClick={handleEditCancel} disabled={loading}>
-                Cancel
-              </Button>
-            </Form.Item>
-          </Form>
-        </Modal>
-      )}
+
+      <EditTaskModal
+        visible={isEditModalVisible}
+        onCancel={handleEditCancel}
+        onUpdate={handleUpdateTask}
+        task={editingTask}
+        loading={loading}
+      />
     </div>
   );
 };

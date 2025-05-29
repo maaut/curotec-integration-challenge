@@ -11,8 +11,7 @@ const App: React.FC = () => {
     <TaskProvider>
       <Layout className="layout">
         <Header>
-          <div className="logo" />
-          <h1 style={{ color: "white" }}>Task Management App</h1>
+          <h1 style={{ color: "white", margin: 6 }}>Task Management App</h1>
         </Header>
         <Content style={{ padding: "0" }}>
           <TaskListPage />
