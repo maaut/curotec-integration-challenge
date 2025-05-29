@@ -1,22 +1,19 @@
-import { PrismaClient, Task } from "../../generated/prisma"; // Adjusted import path
+import { PrismaClient, Task, Prisma } from "../../generated/prisma";
+import { CreateTaskDto, UpdateTaskDto } from "../dtos/task.dto";
 
 const prisma = new PrismaClient();
 
-export const createTask = async (data: {
-  title: string;
-  description?: string;
-  completed?: boolean;
-}): Promise<Task> => {
+export const createTask = async (data: CreateTaskDto): Promise<Task> => {
   if (!data.title) {
     throw new Error("Title is required");
   }
 
-  return prisma.task.create({
-    data: {
-      ...data,
-      completed: data.completed || false,
-    },
-  });
+  const taskData: Prisma.TaskCreateInput = {
+    ...data,
+    completed: data.completed || false,
+  };
+
+  return prisma.task.create({ data: taskData });
 };
 
 export const getAllTasks = async (): Promise<Task[]> => {
@@ -31,12 +28,14 @@ export const getTaskById = async (id: string): Promise<Task | null> => {
 
 export const updateTask = async (
   id: string,
-  data: { title?: string; description?: string; completed?: boolean }
+  data: UpdateTaskDto
 ): Promise<Task | null> => {
+  const updateData: Prisma.TaskUpdateInput = data;
+
   try {
     return await prisma.task.update({
       where: { id },
-      data,
+      data: updateData,
     });
   } catch (error: any) {
     if (error.code === "P2025") {

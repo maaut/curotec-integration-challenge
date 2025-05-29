@@ -5,7 +5,7 @@ import healthRouter from "./routes/health";
 import tasksRouter from "./routes/tasks";
 
 const app: Express = express();
-const port = process.env.PORT || 3000;
+const port: string | number = process.env.PORT || 3000;
 
 // Middlewares
 app.use(
