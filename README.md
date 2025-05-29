@@ -35,6 +35,14 @@ The API is located in the `api` directory.
 
     Replace `USER`, `PASSWORD`, `HOST`, `PORT`, and `DATABASE` with your PostgreSQL credentials.
 
+    You can also configure the allowed CORS origin by creating a `.env` file in the `api` directory (if it doesn't exist already) and adding the `CORS_ORIGIN` variable. If not set, it defaults to `*` (all origins).
+
+    ```env
+    # api/.env
+    PORT=3000
+    CORS_ORIGIN=http://your-frontend-domain.com
+    ```
+
 4.  **Initialize the database (if you have an existing schema):**
 
     ```bash
