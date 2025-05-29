@@ -1,6 +1,16 @@
 # Curotec Integration Challenge
 
-This project is a basic Node.js application with TypeScript, Express, Prisma, and PostgreSQL.
+This project contains a Node.js API backend and a React frontend.
+
+## Project Structure
+
+```
+/
+├── api/            # Node.js, Express, Prisma, TypeScript API
+├── frontend/       # React, TypeScript (Vite) Frontend
+├── .env            # Root environment variables for Docker Compose
+└── docker-compose.yml
+```
 
 ## API Setup
 
@@ -79,3 +89,39 @@ In the `api` directory, you can run the following scripts:
 - `npm run prisma:db:pull`: Introspect existing database to `schema.prisma`.
 - `npm run prisma:db:push`: Push `schema.prisma` state to DB (prototyping, no migrations).
 - `npm run prisma:db:seed`: Run seed scripts.
+
+## Frontend Setup (React with TypeScript using Vite)
+
+The frontend application is located in the `frontend` directory.
+
+### Prerequisites
+
+- Node.js (v16 or higher recommended)
+- npm
+
+### Getting Started
+
+1.  **Navigate to the frontend directory:**
+
+    ```bash
+    cd frontend
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    npm install
+    ```
+
+3.  **Start the development server:**
+    ```bash
+    npm run dev
+    ```
+    This will usually start the frontend on `http://localhost:5173` (Vite's default) or another port if 5173 is busy. Check your terminal for the exact URL.
+
+### Available Scripts (in `frontend` directory)
+
+- `npm run dev`: Starts the Vite development server.
+- `npm run build`: Builds the application for production.
+- `npm run lint`: Lints the codebase (if ESLint is configured).
+- `npm run preview`: Serves the production build locally for preview.
