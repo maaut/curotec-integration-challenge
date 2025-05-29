@@ -3,6 +3,7 @@ import cors from "cors";
 import { loggerMiddleware } from "./middlewares/logger";
 import healthRouter from "./routes/health";
 import tasksRouter from "./routes/tasks";
+import authRouter from "./routes/auth";
 
 const app: Express = express();
 const port: string | number = process.env.PORT || 3000;
@@ -21,6 +22,7 @@ app.use(express.json());
 // Routes
 app.use("/api", healthRouter);
 app.use("/api", tasksRouter);
+app.use("/api/auth", authRouter);
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);

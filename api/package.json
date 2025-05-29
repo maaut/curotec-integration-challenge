@@ -22,9 +22,11 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.15.24",
     "@types/supertest": "^6.0.3",
     "express": "^5.1.0",
@@ -38,7 +40,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.8.2",
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
     "zod": "^3.25.36"
   }
 }

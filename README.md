@@ -67,9 +67,27 @@ The API is located in the `api` directory.
 
     ```env
     DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}?schema=public"
-    PORT=3000
-    CORS_ORIGIN=http://your-frontend-domain.com
+    PORT=3000 # Optional: API server port, defaults to 3000 if not set
+    CORS_ORIGIN="http://localhost:5173" # Optional: Frontend URL for CORS, defaults to * if not set
+
+    # JWT Configuration
+    # -----------------
+    # This secret is used to sign and verify JSON Web Tokens (JWTs) for user authentication.
+    # It MUST be a long, random, and strong string to ensure the security of your application.
+    #
+    # How to generate a strong secret:
+    # You can use a password generator or a command-line tool like OpenSSL:
+    # openssl rand -base64 32
+    #
+    # Example (REPLACE THIS WITH YOUR OWN GENERATED SECRET):
+    JWT_SECRET="your_very_strong_and_random_jwt_secret_string_here_dont_use_this_example_value"
     ```
+
+    **Important notes for `api/.env`:**
+
+    - Ensure this `.env` file (i.e., `api/.env`) is listed in your `api/.gitignore` file.
+    - The `DATABASE_URL` should use the same credentials (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`) as defined in the root `/.env` if you are using the provided Docker Compose setup for PostgreSQL. The `localhost:5432` part refers to the port exposed by the Docker container to your host machine.
+    - `JWT_SECRET` is critical for security. Keep it secret and make it strong.
 
 ### Available Scripts
 

@@ -100,6 +100,7 @@ describe("Task Service", () => {
         completed: false,
         createdAt: new Date(),
         updatedAt: new Date(),
+        userId: "usr-1",
       },
       {
         id: "2",
@@ -108,6 +109,7 @@ describe("Task Service", () => {
         completed: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        userId: "usr-1",
       },
     ];
 
@@ -269,6 +271,7 @@ describe("Task Service", () => {
         completed: false,
         createdAt: new Date(),
         updatedAt: new Date(),
+        userId: "usr-1",
       };
       (prisma.task.findUnique as jest.Mock).mockResolvedValue(expectedTask);
 
@@ -302,6 +305,7 @@ describe("Task Service", () => {
         completed: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        userId: "usr-1",
       };
       (prisma.task.update as jest.Mock).mockResolvedValue(expectedTask);
 
@@ -352,6 +356,7 @@ describe("Task Service", () => {
         completed: false,
         createdAt: new Date(),
         updatedAt: new Date(),
+        userId: "usr-1",
       };
       (prisma.task.delete as jest.Mock).mockResolvedValue(expectedTask);
 
