@@ -10,77 +10,72 @@ The API is located in the `api` directory.
 
 - Node.js (v16 or higher recommended)
 - npm
-- PostgreSQL
+- Docker and Docker Compose (for PostgreSQL)
+- PostgreSQL (if not using Docker)
 
 ### Getting Started
 
-1.  **Navigate to the API directory:**
+1.  **Set up root environment variables for Docker Compose:**
+    Create a `.env` file in the root of the project (alongside `docker-compose.yml`). This file will store sensitive credentials for Docker Compose services.
+
+    Example `/.env`:
+
+    ```env
+    # Root .env file for Docker Compose
+    POSTGRES_USER=myuser
+    POSTGRES_PASSWORD=mypassword
+    POSTGRES_DB=mydatabase
+    ```
+
+2.  **Start the PostgreSQL database (using Docker Compose):**
+    From the root of the project, run:
+
+    ```bash
+    docker-compose up -d
+    ```
+
+    This will start a PostgreSQL container. Docker Compose automatically loads variables from the root `.env` file.
+    The credentials in your `api/.env` should match those in the root `.env` file.
+
+3.  **Navigate to the API directory:**
 
     ```bash
     cd api
     ```
 
-2.  **Install dependencies:**
+4.  **Install dependencies:**
 
     ```bash
     npm install
     ```
 
-3.  **Set up environment variables:**
-    Prisma requires a `.env` file in the `api/prisma` directory with your database connection string. Create this file and add your `DATABASE_URL`:
+5.  **Set up API environment variables:**
+    The API has its own environment variables, primarily for Prisma and runtime configurations like CORS or the API port.
+    Prisma requires a `DATABASE_URL` in `api/prisma/.env`. This URL must point to your database, which in the Docker setup, uses the credentials from the root `.env` file.
+
+    Example `api/.env` (ensure it matches root `.env` values for Docker):
 
     ```env
-    DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
-    ```
-
-    Replace `USER`, `PASSWORD`, `HOST`, `PORT`, and `DATABASE` with your PostgreSQL credentials.
-
-    You can also configure the allowed CORS origin by creating a `.env` file in the `api` directory (if it doesn't exist already) and adding the `CORS_ORIGIN` variable. If not set, it defaults to `*` (all origins).
-
-    ```env
-    # api/.env
+    DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}?schema=public"
     PORT=3000
     CORS_ORIGIN=http://your-frontend-domain.com
-    ```
-
-4.  **Initialize the database (if you have an existing schema):**
-
-    ```bash
-    npx prisma db pull
-    ```
-
-5.  **Generate Prisma Client:**
-    ```bash
-    npx prisma generate
     ```
 
 ### Available Scripts
 
 In the `api` directory, you can run the following scripts:
 
-- `npm run dev`
-  Starts the development server using `nodemon`. The server will automatically restart when code changes are detected.
+- `npm run dev`: Starts the development server with `nodemon`.
+- `npm run build`: Compiles TypeScript to JavaScript.
+- `npm start`: Starts the production server.
+- `npm test`: (Placeholder)
 
-- `npm run build`
-  Compiles the TypeScript code to JavaScript in the `dist` directory.
+**Prisma Scripts:**
 
-- `npm start`
-  Starts the production server from the compiled code in the `dist` directory.
-
-- `npm test`
-  (Currently a placeholder - echo "Error: no test specified" && exit 1)
-
-### Project Structure (api directory)
-
-```
-api/
-├── prisma/
-│   ├── schema.prisma  # Prisma schema file
-│   └── .env           # Environment variables (DATABASE_URL)
-├── src/
-│   └── index.ts     # Main application entry point
-├── .env               # General environment variables (e.g., PORT)
-├── package.json
-├── package-lock.json
-└── tsconfig.json
-```
+- `npm run prisma:migrate:dev`: Create and apply new migrations (development).
+- `npm run prisma:migrate:deploy`: Apply pending migrations (production).
+- `npm run prisma:generate`: Generate Prisma Client.
+- `npm run prisma:studio`: Open Prisma Studio (GUI for database).
+- `npm run prisma:db:pull`: Introspect existing database to `schema.prisma`.
+- `npm run prisma:db:push`: Push `schema.prisma` state to DB (prototyping, no migrations).
+- `npm run prisma:db:seed`: Run seed scripts.
