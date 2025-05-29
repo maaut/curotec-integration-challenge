@@ -86,6 +86,7 @@ describe("Task Controller", () => {
             completed: false,
             createdAt: new Date(),
             updatedAt: new Date(),
+            userId: "usr-1",
           },
         ],
         total: 1,

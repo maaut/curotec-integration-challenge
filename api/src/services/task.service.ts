@@ -4,7 +4,10 @@ import { GetAllTasksParams, PaginatedTasksResponse } from "../types/task.types";
 
 const prisma = new PrismaClient();
 
-export const createTask = async (data: CreateTaskDto): Promise<Task> => {
+export const createTask = async (
+  data: CreateTaskDto,
+  userId: string
+): Promise<Task> => {
   if (!data.title) {
     throw new Error("Title is required");
   }
@@ -12,12 +15,14 @@ export const createTask = async (data: CreateTaskDto): Promise<Task> => {
   const taskData: Prisma.TaskCreateInput = {
     ...data,
     completed: data.completed || false,
+    user: { connect: { id: userId } },
   };
 
   return prisma.task.create({ data: taskData });
 };
 
 export const getAllTasks = async (
+  userId: string,
   params: GetAllTasksParams = {}
 ): Promise<PaginatedTasksResponse> => {
   const {
@@ -29,7 +34,7 @@ export const getAllTasks = async (
     search,
   } = params;
 
-  const where: Prisma.TaskWhereInput = {};
+  const where: Prisma.TaskWhereInput = { userId };
 
   if (completed && completed !== "all") {
     where.completed = completed === "true";
@@ -62,17 +67,29 @@ export const getAllTasks = async (
   };
 };
 
-export const getTaskById = async (id: string): Promise<Task | null> => {
-  return prisma.task.findUnique({
-    where: { id },
+export const getTaskById = async (
+  id: string,
+  userId: string
+): Promise<Task | null> => {
+  return prisma.task.findFirst({
+    where: { id, userId },
   });
 };
 
 export const updateTask = async (
   id: string,
-  data: UpdateTaskDto
+  data: UpdateTaskDto,
+  userId: string
 ): Promise<Task | null> => {
   const updateData: Prisma.TaskUpdateInput = data;
+
+  const task = await prisma.task.findFirst({
+    where: { id, userId },
+  });
+
+  if (!task) {
+    return null;
+  }
 
   try {
     return await prisma.task.update({
@@ -87,7 +104,18 @@ export const updateTask = async (
   }
 };
 
-export const deleteTask = async (id: string): Promise<Task | null> => {
+export const deleteTask = async (
+  id: string,
+  userId: string
+): Promise<Task | null> => {
+  const task = await prisma.task.findFirst({
+    where: { id, userId },
+  });
+
+  if (!task) {
+    return null;
+  }
+
   try {
     return await prisma.task.delete({
       where: { id },

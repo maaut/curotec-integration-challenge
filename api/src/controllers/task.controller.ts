@@ -6,13 +6,21 @@ import { GetAllTasksParams } from "../types/task.types";
 export const createTaskController = async (
   req: Request<{}, {}, CreateTaskDto>,
   res: Response
-) => {
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const userId = req.user.id;
+
   try {
-    const task = await TaskService.createTask(req.body);
+    const task = await TaskService.createTask(req.body, userId);
     res.status(201).json(task);
+    return;
   } catch (error: any) {
     if (error.message === "Title is required") {
       res.status(400).json({ error: error.message });
+      return;
     }
     console.error(
       "Controller - Failed to create task:",
@@ -21,10 +29,20 @@ export const createTaskController = async (
     res
       .status(500)
       .json({ error: "An unexpected error occurred while creating the task" });
+    return;
   }
 };
 
-export const getAllTasksController = async (req: Request, res: Response) => {
+export const getAllTasksController = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const userId = req.user.id;
+
   try {
     const { page, limit, sortBy, sortOrder, completed, search } =
       req.query as unknown as GetAllTasksParams;
@@ -44,76 +62,102 @@ export const getAllTasksController = async (req: Request, res: Response) => {
       (key) => (params as any)[key] === undefined && delete (params as any)[key]
     );
 
-    const result = await TaskService.getAllTasks(params);
+    const result = await TaskService.getAllTasks(userId, params);
     res.json(result);
+    return;
   } catch (error: any) {
     console.error(
       "Controller - Failed to retrieve tasks:",
       error.message || error
     );
     res.status(500).json({ error: "Failed to retrieve tasks" });
+    return;
   }
 };
 
 export const getTaskByIdController = async (
   req: Request<{ id: string }>,
   res: Response
-) => {
-  const { id } = req.params;
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const userId = req.user.id;
+  const { id: taskId } = req.params;
+
   try {
-    const task = await TaskService.getTaskById(id);
+    const task = await TaskService.getTaskById(taskId, userId);
     if (task) {
       res.json(task);
     } else {
-      res.status(404).json({ error: "Task not found" });
+      res.status(404).json({ error: "Task not found or not owned by user" });
     }
+    return;
   } catch (error: any) {
     console.error(
       "Controller - Failed to retrieve task:",
       error.message || error
     );
     res.status(500).json({ error: "Failed to retrieve task" });
+    return;
   }
 };
 
 export const updateTaskController = async (
   req: Request<{ id: string }, {}, UpdateTaskDto>,
   res: Response
-) => {
-  const { id } = req.params;
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const userId = req.user.id;
+  const { id: taskId } = req.params;
+
   try {
-    const task = await TaskService.updateTask(id, req.body);
+    const task = await TaskService.updateTask(taskId, req.body, userId);
     if (task) {
       res.json(task);
     } else {
-      res.status(404).json({ error: "Task not found" });
+      res.status(404).json({ error: "Task not found or not owned by user" });
     }
+    return;
   } catch (error: any) {
     console.error(
       "Controller - Failed to update task:",
       error.message || error
     );
     res.status(500).json({ error: "Failed to update task" });
+    return;
   }
 };
 
 export const deleteTaskController = async (
   req: Request<{ id: string }>,
   res: Response
-) => {
-  const { id } = req.params;
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const userId = req.user.id;
+  const { id: taskId } = req.params;
+
   try {
-    const task = await TaskService.deleteTask(id);
+    const task = await TaskService.deleteTask(taskId, userId);
     if (task) {
-      res.status(204).send("Task deleted successfully");
+      res.status(200).json({ message: "Task deleted successfully", task });
     } else {
-      res.status(404).json({ error: "Task not found" });
+      res.status(404).json({ error: "Task not found or not owned by user" });
     }
+    return;
   } catch (error: any) {
     console.error(
       "Controller - Failed to delete task:",
       error.message || error
     );
     res.status(500).json({ error: "Failed to delete task" });
+    return;
   }
 };

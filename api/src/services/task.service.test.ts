@@ -44,7 +44,7 @@ describe("Task Service", () => {
       };
       (prisma.task.create as jest.Mock).mockResolvedValue(expectedTask);
 
-      const result = await createTask(taskData);
+      const result = await createTask(taskData, "usr-1");
       expect(prisma.task.create).toHaveBeenCalledWith({
         data: { ...taskData, completed: false },
       });
@@ -69,7 +69,7 @@ describe("Task Service", () => {
       };
       (prisma.task.create as jest.Mock).mockResolvedValue(expectedTask);
 
-      await createTask(taskData);
+      await createTask(taskData, "usr-1");
       expect(prisma.task.create).toHaveBeenCalledWith({
         data: { title: "Test Task", completed: false },
       });
@@ -84,7 +84,7 @@ describe("Task Service", () => {
         updatedAt: new Date(),
       };
       (prisma.task.create as jest.Mock).mockResolvedValue(expectedTask);
-      await createTask(taskData);
+      await createTask(taskData, "usr-1");
       expect(prisma.task.create).toHaveBeenCalledWith({
         data: { title: "Test Task", completed: true },
       });
@@ -117,7 +117,7 @@ describe("Task Service", () => {
       (prisma.task.findMany as jest.Mock).mockResolvedValue(mockTasks);
       (prisma.task.count as jest.Mock).mockResolvedValue(mockTasks.length);
 
-      const result = await getAllTasks();
+      const result = await getAllTasks("usr-1");
 
       expect(prisma.task.findMany).toHaveBeenCalledWith({
         skip: 0,
@@ -142,7 +142,7 @@ describe("Task Service", () => {
       );
       (prisma.task.count as jest.Mock).mockResolvedValue(10);
 
-      const result = await getAllTasks(params);
+      const result = await getAllTasks("usr-1", params);
 
       expect(prisma.task.findMany).toHaveBeenCalledWith({
         skip: 5,
@@ -162,7 +162,7 @@ describe("Task Service", () => {
       (prisma.task.findMany as jest.Mock).mockResolvedValue(mockTasks);
       (prisma.task.count as jest.Mock).mockResolvedValue(mockTasks.length);
 
-      await getAllTasks(params);
+      await getAllTasks("usr-1", params);
 
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -178,7 +178,7 @@ describe("Task Service", () => {
       );
       (prisma.task.count as jest.Mock).mockResolvedValue(1);
 
-      await getAllTasks(params);
+      await getAllTasks("usr-1", params);
       const expectedWhere = { completed: true };
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -195,7 +195,7 @@ describe("Task Service", () => {
       );
       (prisma.task.count as jest.Mock).mockResolvedValue(1);
 
-      await getAllTasks(params);
+      await getAllTasks("usr-1", params);
       const expectedWhere = { completed: false };
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -210,7 +210,7 @@ describe("Task Service", () => {
       (prisma.task.findMany as jest.Mock).mockResolvedValue(mockTasks);
       (prisma.task.count as jest.Mock).mockResolvedValue(mockTasks.length);
 
-      await getAllTasks(params);
+      await getAllTasks("usr-1", params);
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {},
@@ -224,7 +224,7 @@ describe("Task Service", () => {
       (prisma.task.findMany as jest.Mock).mockResolvedValue([]);
       (prisma.task.count as jest.Mock).mockResolvedValue(0);
 
-      await getAllTasks(params);
+      await getAllTasks("usr-1", params);
       const expectedWhere = {
         OR: [
           { title: { contains: "TestSearch", mode: "insensitive" } },
@@ -244,7 +244,7 @@ describe("Task Service", () => {
       (prisma.task.findMany as jest.Mock).mockResolvedValue([mockTasks[1]]);
       (prisma.task.count as jest.Mock).mockResolvedValue(1);
 
-      await getAllTasks(params);
+      await getAllTasks("usr-1", params);
       const expectedWhere = {
         completed: true,
         OR: [
@@ -275,7 +275,7 @@ describe("Task Service", () => {
       };
       (prisma.task.findUnique as jest.Mock).mockResolvedValue(expectedTask);
 
-      const result = await getTaskById(taskId);
+      const result = await getTaskById(taskId, "usr-1");
       expect(prisma.task.findUnique).toHaveBeenCalledWith({
         where: { id: taskId },
       });
@@ -286,7 +286,7 @@ describe("Task Service", () => {
       const taskId = "non-existent-id";
       (prisma.task.findUnique as jest.Mock).mockResolvedValue(null);
 
-      const result = await getTaskById(taskId);
+      const result = await getTaskById(taskId, "usr-1");
       expect(prisma.task.findUnique).toHaveBeenCalledWith({
         where: { id: taskId },
       });
@@ -309,7 +309,7 @@ describe("Task Service", () => {
       };
       (prisma.task.update as jest.Mock).mockResolvedValue(expectedTask);
 
-      const result = await updateTask(taskId, updateData);
+      const result = await updateTask(taskId, updateData, "usr-1");
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: taskId },
         data: updateData,
@@ -322,7 +322,7 @@ describe("Task Service", () => {
       const updateData = { title: "Updated Task" };
       (prisma.task.update as jest.Mock).mockRejectedValue({ code: "P2025" });
 
-      const result = await updateTask(taskId, updateData);
+      const result = await updateTask(taskId, updateData, "usr-1");
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: taskId },
         data: updateData,
@@ -336,7 +336,7 @@ describe("Task Service", () => {
       const error = new Error("Some other error");
       (prisma.task.update as jest.Mock).mockRejectedValue(error);
 
-      await expect(updateTask(taskId, updateData)).rejects.toThrow(
+      await expect(updateTask(taskId, updateData, "usr-1")).rejects.toThrow(
         "Some other error"
       );
       expect(prisma.task.update).toHaveBeenCalledWith({
@@ -360,7 +360,7 @@ describe("Task Service", () => {
       };
       (prisma.task.delete as jest.Mock).mockResolvedValue(expectedTask);
 
-      const result = await deleteTask(taskId);
+      const result = await deleteTask(taskId, "usr-1");
       expect(prisma.task.delete).toHaveBeenCalledWith({
         where: { id: taskId },
       });
@@ -371,7 +371,7 @@ describe("Task Service", () => {
       const taskId = "non-existent-id";
       (prisma.task.delete as jest.Mock).mockRejectedValue({ code: "P2025" });
 
-      const result = await deleteTask(taskId);
+      const result = await deleteTask(taskId, "usr-1");
       expect(prisma.task.delete).toHaveBeenCalledWith({
         where: { id: taskId },
       });
@@ -383,7 +383,9 @@ describe("Task Service", () => {
       const error = new Error("Some other error");
       (prisma.task.delete as jest.Mock).mockRejectedValue(error);
 
-      await expect(deleteTask(taskId)).rejects.toThrow("Some other error");
+      await expect(deleteTask(taskId, "usr-1")).rejects.toThrow(
+        "Some other error"
+      );
       expect(prisma.task.delete).toHaveBeenCalledWith({
         where: { id: taskId },
       });
