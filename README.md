@@ -1,13 +1,57 @@
 # Curotec Integration Challenge
 
-This project contains a Node.js API backend and a React frontend.
+This project contains a Node.js API backend and a React frontend for a full-stack task management application with real-time collaboration features.
+
+## Features
+
+### Backend (API)
+
+- **User Authentication**: JWT-based registration and login
+- **Task Management**: CRUD operations for tasks with user ownership
+- **Task Collaboration**: Invite users to collaborate on tasks
+- **Real-time Notifications**: WebSocket-based notifications for task invitations
+- **API Documentation**: OpenAPI/Swagger documentation at `/api-docs`
+- **Database**: PostgreSQL with Prisma ORM
+- **Testing**: Jest test suite with coverage reporting
+
+### Frontend
+
+- **Modern React**: Built with React 18, TypeScript, and Vite
+- **UI Components**: Ant Design (antd) component library
+- **Authentication**: Login/register forms with JWT token management
+- **Task Management**:
+  - Create, edit, and delete tasks
+  - Mark tasks as complete/incomplete
+  - Pagination, filtering, and sorting
+- **Real-time Collaboration**:
+  - Invite users to tasks via email
+  - Real-time notifications when invited to tasks
+  - Separate views for owned and invited tasks
+- **Responsive Design**: Works on desktop and mobile devices
+- **Theme Support**: Light and dark mode toggle
 
 ## Project Structure
 
 ```
 /
 ├── api/            # Node.js, Express, Prisma, TypeScript API
+│   ├── src/
+│   │   ├── controllers/    # Request handlers
+│   │   ├── services/       # Business logic (including WebSocket)
+│   │   ├── routes/         # API routes with OpenAPI docs
+│   │   ├── middlewares/    # Auth, validation, and logging
+│   │   ├── dtos/          # Data transfer objects
+│   │   └── config/        # App configuration
+│   ├── prisma/            # Database schema and migrations
+│   └── tests/             # Jest test files
 ├── frontend/       # React, TypeScript (Vite) Frontend
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── services/      # API calls and WebSocket service
+│   │   ├── providers/     # Context providers
+│   │   └── types/         # TypeScript type definitions
 ├── .env            # Root environment variables for Docker Compose
 └── docker-compose.yml
 ```
@@ -57,6 +101,24 @@ This project includes a root `package.json` to simplify common tasks like instal
     npm run start:dev
     ```
     This command will start the API (typically on `http://localhost:3000`) and the frontend (typically on `http://localhost:5173`) concurrently. Check your terminal for the exact URLs.
+
+## API Documentation
+
+Once the API is running, you can access the interactive OpenAPI documentation at:
+
+- **Swagger UI**: `http://localhost:3000/api-docs`
+
+The documentation includes detailed information about all available endpoints, request/response schemas, and authentication requirements.
+
+## Real-time Features
+
+The application includes WebSocket-based real-time notifications:
+
+- **Task Invitations**: When a user is invited to collaborate on a task, they receive an instant notification
+- **Task Updates**: Users are notified when they're removed from task collaborations
+- **Automatic UI Updates**: The task list automatically refreshes when receiving notifications
+
+The WebSocket server runs on the same port as the API and requires JWT authentication.
 
 ---
 
@@ -261,3 +323,126 @@ To run the application, you need to have both the backend API and the frontend d
     - Start the frontend development server: `npm run dev` (typically on `http://localhost:5173`)
 
 Once both are running, you can access the application via the frontend URL (e.g., `http://localhost:5173`).
+
+## Testing
+
+### Backend Testing
+
+The API includes a comprehensive Jest test suite:
+
+```bash
+cd api
+npm test                 # Run all tests
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Run tests with coverage report
+```
+
+### Frontend Testing
+
+Frontend testing capabilities are available through Vite:
+
+```bash
+cd frontend
+npm run lint            # Run ESLint for code quality
+```
+
+## Usage Guide
+
+### Getting Started
+
+1. **Register a new account** or **login** with existing credentials
+2. **Create tasks** using the "Add Task" button
+3. **Manage tasks** with edit, delete, and completion toggle features
+4. **Invite collaborators** by clicking the invite button on any task you own
+5. **Receive real-time notifications** when invited to collaborate on tasks
+
+### Task Collaboration
+
+- **Owned Tasks**: Tasks you created appear in the main list
+- **Invited Tasks**: Tasks you're invited to collaborate on appear in a separate "Invited Tasks" section
+- **Real-time Updates**: When someone invites you to a task, you'll see an instant notification and the task list will refresh automatically
+
+## Troubleshooting
+
+### Common Issues
+
+**Database Connection Issues:**
+
+- Ensure PostgreSQL is running: `docker-compose up -d`
+- Check that your `api/.env` credentials match the root `/.env` file
+- Verify the `DATABASE_URL` format in `api/.env`
+
+**WebSocket Connection Errors:**
+
+- Ensure the backend server is running on the correct port (default: 3000)
+- Check browser console for specific WebSocket error messages
+- Verify JWT token is valid (try logging out and back in)
+
+**Frontend Build Issues:**
+
+- Clear node_modules and reinstall: `rm -rf node_modules package-lock.json && npm install`
+- Check for TypeScript errors: `npm run build`
+
+**Port Conflicts:**
+
+- API default port: 3000 (configurable via `PORT` in `api/.env`)
+- Frontend default port: 5173 (Vite will use next available port)
+- Database default port: 5432 (Docker container)
+
+### Environment Variables Checklist
+
+**Root `.env`:**
+
+```env
+POSTGRES_USER=myuser
+POSTGRES_PASSWORD=mypassword
+POSTGRES_DB=mydatabase
+```
+
+**API `.env**:
+
+```env
+DATABASE_URL="postgresql://myuser:mypassword@localhost:5432/mydatabase?schema=public"
+JWT_SECRET="your_very_strong_and_random_jwt_secret"
+PORT=3000
+CORS_ORIGIN="http://localhost:5173"
+```
+
+**Frontend `.env` (optional):**
+
+```env
+VITE_API_URL=http://localhost:3000/api
+```
+
+## Technology Stack
+
+### Backend
+
+- **Node.js** with **TypeScript**
+- **Express.js** web framework
+- **Prisma** ORM with PostgreSQL
+- **Socket.IO** for WebSocket communication
+- **JWT** for authentication
+- **Zod** for validation
+- **Jest** for testing
+- **Swagger/OpenAPI** for documentation
+
+### Frontend
+
+- **React 18** with **TypeScript**
+- **Vite** for build tooling
+- **Ant Design** (antd) UI components
+- **Socket.IO Client** for real-time features
+- **Axios** for HTTP requests
+- **React Router** for navigation
+
+### Development Tools
+
+- **Docker Compose** for database
+- **ESLint** for code quality
+- **Concurrently** for running multiple processes
+- **Nodemon** for development server
+
+## License
+
+This project is part of the Curotec Integration Challenge.
