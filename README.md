@@ -139,6 +139,41 @@ The API is located in the `api` directory.
     - The `DATABASE_URL` should use the same credentials (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`) as defined in the root `/.env` if you are using the provided Docker Compose setup for PostgreSQL. The `localhost:5432` part refers to the port exposed by the Docker container to your host machine.
     - `JWT_SECRET` is critical for security. Keep it secret and make it strong.
 
+### First-Time Prisma Setup
+
+Before running the API for the first time, or after pulling down changes that include new database models or modifications to existing ones, you need to ensure your local database schema is synchronized with the Prisma schema and that the Prisma Client is generated.
+
+1.  **Generate Prisma Client:**
+    Prisma Client is a type-safe database client that you use to interact with your database. It's generated based on your `schema.prisma` file.
+    Run this from the `api` directory:
+
+    ```bash
+    npm run prisma:generate
+    ```
+
+2.  **Run Database Migrations (Development):
+    **Prisma Migrate creates and applies SQL migration files based on changes to your `schema.prisma` file. For development, `migrate dev` will also create the database if it doesn't exist and apply pending migrations.
+    Run this from the `api` directory:
+    ```bash
+    npm run prisma:migrate:dev
+    ```
+    You might be prompted to name your first migration (e.g., "initial_setup").
+
+**Combined Setup Script:**
+To simplify the above two steps for a first-time setup or after schema changes, you can use the `prisma:setup` script. This script combines both `prisma:generate` and `prisma:migrate:dev`.
+
+Run from the `api` directory:
+
+```bash
+npm run prisma:setup
+```
+
+Or from the project root:
+
+```bash
+npm run prisma:setup --prefix api
+```
+
 ### Available Scripts
 
 In the `api` directory, you can run the following scripts:
