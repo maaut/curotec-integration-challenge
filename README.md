@@ -95,7 +95,11 @@ This project includes a root `package.json` to simplify common tasks like instal
 5.  **Set up Frontend Environment Variables (`frontend/.env` - Optional):**
     (See detailed instructions under [Frontend Setup > Getting Started > Set up Frontend Environment Variables](#set-up-frontend-environment-variables-optional-but-recommended))
 
-6.  **Run the entire stack (API + Frontend):**
+6.  **Set up Prisma (First-time setup):**
+    Before running the application for the first time, you need to set up the database schema and generate the Prisma client.
+    (See detailed instructions under [First-Time Prisma Setup](#first-time-prisma-setup))
+
+7.  **Run the entire stack (API + Frontend):**
     From the root of the project, run:
     ```bash
     npm run start:dev
@@ -354,12 +358,12 @@ npm run lint            # Run ESLint for code quality
 2. **Create tasks** using the "Add Task" button
 3. **Manage tasks** with edit, delete, and completion toggle features
 4. **Invite collaborators** by clicking the invite button on any task you own
-5. **Receive real-time notifications** when invited to collaborate on tasks
+5. **Receive real-time notifications** when invited to collaborate on tasks, or when you're removed from a task
 
 ### Task Collaboration
 
-- **Owned Tasks**: Tasks you created appear in the main list
-- **Invited Tasks**: Tasks you're invited to collaborate on appear in a separate "Invited Tasks" section
+- **Owned Tasks**: Tasks you created will have a "Owner" tag in the task list
+- **Invited Tasks**: Tasks you're invited to collaborate on will have a "Invitee" tag in the task list
 - **Real-time Updates**: When someone invites you to a task, you'll see an instant notification and the task list will refresh automatically
 
 ## Troubleshooting
@@ -391,7 +395,7 @@ npm run lint            # Run ESLint for code quality
 
 ### Environment Variables Checklist
 
-**Root `.env`:**
+**Root `.env**:
 
 ```env
 POSTGRES_USER=myuser
@@ -408,7 +412,7 @@ PORT=3000
 CORS_ORIGIN="http://localhost:5173"
 ```
 
-**Frontend `.env` (optional):**
+\*\*Frontend `.env` (optional):
 
 ```env
 VITE_API_URL=http://localhost:3000/api
