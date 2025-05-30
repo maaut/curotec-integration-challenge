@@ -240,7 +240,7 @@ export const inviteUserToTask = async (
     throw new Error(`User with email ${inviteeEmail} not found.`);
   }
 
-  return prisma.task.update({
+  const updatedTask = await prisma.task.update({
     where: { id: taskId },
     data: { invitee: { connect: { id: inviteeUser.id } } },
     include: {
@@ -248,6 +248,27 @@ export const inviteUserToTask = async (
       user: { select: selectInviteeFields },
     },
   });
+
+  try {
+    if (global.webSocketService) {
+      global.webSocketService.notifyTaskInvitation(
+        inviteeUser.id,
+        {
+          id: updatedTask.id,
+          title: updatedTask.title,
+          description: updatedTask.description,
+        },
+        {
+          id: task.user?.id,
+          email: task.user?.email,
+        }
+      );
+    }
+  } catch (error) {
+    console.error("Failed to send WebSocket notification:", error);
+  }
+
+  return updatedTask;
 };
 
 export const uninviteUserFromTask = async (
@@ -256,6 +277,10 @@ export const uninviteUserFromTask = async (
 ): Promise<Task | null> => {
   const task = await prisma.task.findFirst({
     where: { id: taskId, userId: ownerId },
+    include: {
+      user: true,
+      invitee: true,
+    },
   });
 
   if (!task) {
@@ -266,7 +291,9 @@ export const uninviteUserFromTask = async (
     throw new Error("No user is currently invited to this task.");
   }
 
-  return prisma.task.update({
+  const removedInviteeId = task.inviteeId;
+
+  const updatedTask = await prisma.task.update({
     where: { id: taskId },
     data: { invitee: { disconnect: true } },
     include: {
@@ -274,4 +301,25 @@ export const uninviteUserFromTask = async (
       user: { select: selectInviteeFields },
     },
   });
+
+  try {
+    if (global.webSocketService && removedInviteeId) {
+      global.webSocketService.notifyTaskUninvitation(
+        removedInviteeId,
+        {
+          id: updatedTask.id,
+          title: updatedTask.title,
+          description: updatedTask.description,
+        },
+        {
+          id: task.user?.id,
+          email: task.user?.email,
+        }
+      );
+    }
+  } catch (error) {
+    console.error("Failed to send WebSocket notification:", error);
+  }
+
+  return updatedTask;
 };

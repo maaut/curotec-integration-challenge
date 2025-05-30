@@ -54,6 +54,7 @@ const TaskList: React.FC = () => {
     uninviteFromTask,
     setTasksState,
   } = useTasks();
+
   const { user } = useAuth();
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
