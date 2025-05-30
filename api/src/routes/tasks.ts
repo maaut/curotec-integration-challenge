@@ -6,6 +6,8 @@ import {
   updateTaskController,
   deleteTaskController,
   toggleTaskCompletionController,
+  inviteToTaskController,
+  uninviteFromTaskController,
 } from "../controllers/task.controller";
 import { validateRequest } from "../middlewares/validateRequest";
 import {
@@ -13,14 +15,12 @@ import {
   updateTaskSchema,
   taskIdSchema,
   toggleTaskSchema,
+  inviteTaskSchema,
 } from "../validations/task.validation";
 import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// router.use(authMiddleware); // Commented out global application for this router
-
-// Apply authMiddleware individually to each route
 router.post(
   "/tasks",
   authMiddleware,
@@ -51,12 +51,25 @@ router.delete(
   deleteTaskController
 );
 
-// Route for toggling task completion status
 router.put(
   "/tasks/:id/toggle",
   authMiddleware,
   validateRequest(toggleTaskSchema),
   toggleTaskCompletionController
+);
+
+router.post(
+  "/tasks/:id/invite",
+  authMiddleware,
+  validateRequest(inviteTaskSchema),
+  inviteToTaskController
+);
+
+router.delete(
+  "/tasks/:id/uninvite",
+  authMiddleware,
+  validateRequest(taskIdSchema),
+  uninviteFromTaskController
 );
 
 export default router;

@@ -5,7 +5,7 @@ import {
   updateTask,
   deleteTask,
 } from "./task.service";
-import { PrismaClient, Task } from "../../generated/prisma";
+import { PrismaClient, Task, User } from "../../generated/prisma";
 import type {
   GetAllTasksParams,
   PaginatedTasksResponse,
@@ -22,15 +22,32 @@ jest.mock("../../generated/prisma", () => {
       count: jest.fn(),
       findFirst: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
   };
   return { PrismaClient: jest.fn(() => mPrismaClient) };
 });
 
 const prisma = new PrismaClient();
 
+const mockSelectInviteeFields = {
+  id: true,
+  email: true,
+};
+
 describe("Task Service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.user.findUnique as jest.Mock).mockImplementation(
+      async ({ where }) => {
+        if (where.id === "usr-1")
+          return { id: "usr-1", email: "owner@example.com" };
+        if (where.email === "invitee@example.com")
+          return { id: "usr-invitee", email: "invitee@example.com" };
+        return null;
+      }
+    );
   });
 
   describe("createTask", () => {
@@ -42,6 +59,7 @@ describe("Task Service", () => {
         completed: false,
         createdAt: new Date(),
         updatedAt: new Date(),
+        userId: "usr-1",
       };
       (prisma.task.create as jest.Mock).mockResolvedValue(expectedTask);
 
@@ -52,27 +70,28 @@ describe("Task Service", () => {
           completed: false,
           user: { connect: { id: "usr-1" } },
         },
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
       expect(result).toEqual(expectedTask);
     });
 
     it("should throw an error if title is missing", async () => {
       const taskData = { description: "Test Description" };
-      // @ts-ignore
-      await expect(createTask(taskData)).rejects.toThrow("Title is required");
+      // @ts-expect-error testing invalid input for title
+      await expect(createTask(taskData, "usr-1")).rejects.toThrow(
+        "Title is required"
+      );
       expect(prisma.task.create).not.toHaveBeenCalled();
     });
 
     it("should set completed to false if not provided", async () => {
       const taskData = { title: "Test Task" };
-      const expectedTask = {
+      (prisma.task.create as jest.Mock).mockResolvedValue({
         id: "1",
         ...taskData,
         completed: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      (prisma.task.create as jest.Mock).mockResolvedValue(expectedTask);
+        userId: "usr-1",
+      });
 
       await createTask(taskData, "usr-1");
       expect(prisma.task.create).toHaveBeenCalledWith({
@@ -81,18 +100,18 @@ describe("Task Service", () => {
           completed: false,
           user: { connect: { id: "usr-1" } },
         },
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
     });
 
     it("should use provided completed status", async () => {
       const taskData = { title: "Test Task", completed: true };
-      const expectedTask = {
+      (prisma.task.create as jest.Mock).mockResolvedValue({
         id: "1",
         ...taskData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      (prisma.task.create as jest.Mock).mockResolvedValue(expectedTask);
+        userId: "usr-1",
+      });
+
       await createTask(taskData, "usr-1");
       expect(prisma.task.create).toHaveBeenCalledWith({
         data: {
@@ -100,6 +119,113 @@ describe("Task Service", () => {
           completed: true,
           user: { connect: { id: "usr-1" } },
         },
+        include: { invitee: { select: mockSelectInviteeFields } },
+      });
+    });
+
+    it("should create a task and connect invitee if inviteeEmail is provided and valid", async () => {
+      const taskData = {
+        title: "Test Task with Invitee",
+        inviteeEmail: "invitee@example.com",
+      };
+      const ownerId = "usr-1";
+      const inviteeUser = { id: "usr-invitee", email: "invitee@example.com" };
+
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce({ id: ownerId, email: "owner@example.com" })
+        .mockResolvedValueOnce(inviteeUser);
+
+      (prisma.task.create as jest.Mock).mockResolvedValue({
+        id: "task-with-invitee",
+        ...taskData,
+        userId: ownerId,
+        inviteeId: inviteeUser.id,
+        invitee: inviteeUser,
+      });
+
+      await createTask(taskData, ownerId);
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: ownerId },
+      });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: "invitee@example.com" },
+      });
+      expect(prisma.task.create).toHaveBeenCalledWith({
+        data: {
+          title: "Test Task with Invitee",
+          completed: false,
+          user: { connect: { id: ownerId } },
+          invitee: { connect: { id: inviteeUser.id } },
+        },
+        include: { invitee: { select: mockSelectInviteeFields } },
+      });
+    });
+
+    it("should create a task without invitee if inviteeEmail is owner's email", async () => {
+      const taskData = {
+        title: "Test Task Self Invite",
+        inviteeEmail: "owner@example.com",
+      };
+      const ownerId = "usr-1";
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: ownerId,
+        email: "owner@example.com",
+      });
+
+      (prisma.task.create as jest.Mock).mockResolvedValue({
+        id: "task-self-invite",
+        ...taskData,
+        userId: ownerId,
+        invitee: null,
+      });
+
+      await createTask(taskData, ownerId);
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: ownerId },
+      });
+      expect(prisma.task.create).toHaveBeenCalledWith({
+        data: {
+          title: "Test Task Self Invite",
+          completed: false,
+          user: { connect: { id: ownerId } },
+        },
+        include: { invitee: { select: mockSelectInviteeFields } },
+      });
+    });
+
+    it("should create a task without invitee if inviteeEmail is not found", async () => {
+      const taskData = {
+        title: "Test Task Invalid Invitee",
+        inviteeEmail: "nonexistent@example.com",
+      };
+      const ownerId = "usr-1";
+
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce({ id: ownerId, email: "owner@example.com" })
+        .mockResolvedValueOnce(null);
+
+      (prisma.task.create as jest.Mock).mockResolvedValue({
+        id: "task-invalid-invitee",
+        ...taskData,
+        userId: ownerId,
+        invitee: null,
+      });
+
+      await createTask(taskData, ownerId);
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: ownerId },
+      });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: "nonexistent@example.com" },
+      });
+      expect(prisma.task.create).toHaveBeenCalledWith({
+        data: {
+          title: "Test Task Invalid Invitee",
+          completed: false,
+          user: { connect: { id: ownerId } },
+        },
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
     });
   });
@@ -114,6 +240,7 @@ describe("Task Service", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         userId: "usr-1",
+        inviteeId: null,
       },
       {
         id: "2",
@@ -123,6 +250,7 @@ describe("Task Service", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         userId: "usr-1",
+        inviteeId: null,
       },
     ];
 
@@ -135,13 +263,12 @@ describe("Task Service", () => {
       expect(prisma.task.findMany).toHaveBeenCalledWith({
         skip: 0,
         take: 10,
-        where: { userId: "usr-1" },
+        where: { OR: [{ userId: "usr-1" }, { inviteeId: "usr-1" }] },
         orderBy: { createdAt: "desc" },
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
       expect(prisma.task.count).toHaveBeenCalledWith({
-        where: {
-          userId: "usr-1",
-        },
+        where: { OR: [{ userId: "usr-1" }, { inviteeId: "usr-1" }] },
       });
       expect(result).toEqual<PaginatedTasksResponse>({
         tasks: mockTasks,
@@ -165,10 +292,13 @@ describe("Task Service", () => {
       expect(prisma.task.findMany).toHaveBeenCalledWith({
         skip: 5,
         take: 5,
-        where: { userId },
+        where: { OR: [{ userId: userId }, { inviteeId: userId }] },
         orderBy: { createdAt: "desc" },
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
-      expect(prisma.task.count).toHaveBeenCalledWith({ where: { userId } });
+      expect(prisma.task.count).toHaveBeenCalledWith({
+        where: { OR: [{ userId: userId }, { inviteeId: userId }] },
+      });
       expect(result.page).toBe(2);
       expect(result.limit).toBe(5);
       expect(result.total).toBe(10);
@@ -197,10 +327,17 @@ describe("Task Service", () => {
       (prisma.task.count as jest.Mock).mockResolvedValue(1);
 
       await getAllTasks("usr-1", params);
-      const expectedWhere = { completed: true, userId: "usr-1" };
+      const expectedWhere = {
+        completed: true,
+        OR: [{ userId: "usr-1" }, { inviteeId: "usr-1" }],
+      };
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expectedWhere,
+          include: { invitee: { select: mockSelectInviteeFields } },
+          orderBy: { createdAt: "desc" },
+          skip: 0,
+          take: 10,
         })
       );
       expect(prisma.task.count).toHaveBeenCalledWith({ where: expectedWhere });
@@ -214,7 +351,10 @@ describe("Task Service", () => {
       (prisma.task.count as jest.Mock).mockResolvedValue(1);
 
       await getAllTasks("usr-1", params);
-      const expectedWhere = { completed: false, userId: "usr-1" };
+      const expectedWhere = {
+        completed: false,
+        OR: [{ userId: "usr-1" }, { inviteeId: "usr-1" }],
+      };
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expectedWhere,
@@ -231,13 +371,11 @@ describe("Task Service", () => {
       await getAllTasks("usr-1", params);
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: "usr-1" },
+          where: { OR: [{ userId: "usr-1" }, { inviteeId: "usr-1" }] },
         })
       );
       expect(prisma.task.count).toHaveBeenCalledWith({
-        where: {
-          userId: "usr-1",
-        },
+        where: { OR: [{ userId: "usr-1" }, { inviteeId: "usr-1" }] },
       });
     });
 
@@ -248,7 +386,6 @@ describe("Task Service", () => {
 
       await getAllTasks("usr-1", params);
       const expectedWhere = {
-        userId: "usr-1",
         OR: [
           { title: { contains: "TestSearch", mode: "insensitive" } },
           { description: { contains: "TestSearch", mode: "insensitive" } },
@@ -270,7 +407,6 @@ describe("Task Service", () => {
       await getAllTasks("usr-1", params);
       const expectedWhere = {
         completed: true,
-        userId: "usr-1",
         OR: [
           { title: { contains: "Task 2", mode: "insensitive" } },
           { description: { contains: "Task 2", mode: "insensitive" } },
@@ -286,8 +422,9 @@ describe("Task Service", () => {
   });
 
   describe("getTaskById", () => {
-    it("should return a task by id", async () => {
+    it("should return a task by id if user is owner", async () => {
       const taskId = "1";
+      const userId = "usr-1";
       const expectedTask: Task = {
         id: taskId,
         title: "Test Task",
@@ -295,35 +432,39 @@ describe("Task Service", () => {
         completed: false,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: "usr-1",
+        userId: userId,
+        inviteeId: null,
       };
       (prisma.task.findFirst as jest.Mock).mockResolvedValue(expectedTask);
 
-      const result = await getTaskById(taskId, "usr-1");
+      const result = await getTaskById(taskId, userId);
       expect(prisma.task.findFirst).toHaveBeenCalledWith({
-        where: { id: taskId, userId: "usr-1" },
+        where: { id: taskId, userId: userId },
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
       expect(result).toEqual(expectedTask);
     });
 
-    it("should return null if task not found", async () => {
+    it("should return null if task not found or user not authorized", async () => {
       const taskId = "non-existent-id";
+      const userId = "usr-1";
       (prisma.task.findFirst as jest.Mock).mockResolvedValue(null);
 
-      const result = await getTaskById(taskId, "usr-1");
+      const result = await getTaskById(taskId, userId);
       expect(prisma.task.findFirst).toHaveBeenCalledWith({
-        where: { id: taskId, userId: "usr-1" },
+        where: { id: taskId, userId: userId },
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
       expect(result).toBeNull();
     });
   });
 
   describe("updateTask", () => {
-    it("should update an existing task", async () => {
+    it("should update an existing task by owner", async () => {
       const taskId = "1";
       const userId = "usr-1";
       const updateData = { title: "Updated Task", completed: true };
-      const mockExistingTask: Task = {
+      const mockExistingTask: Task & { user: Partial<User> | null } = {
         id: taskId,
         title: "Old Title",
         description: "Old description",
@@ -331,12 +472,14 @@ describe("Task Service", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         userId: userId,
+        inviteeId: null,
+        user: { email: "owner@example.com" },
       };
-      const expectedTask: Task = {
+      const expectedTask = {
         ...mockExistingTask,
         ...updateData,
         updatedAt: new Date(),
-      };
+      } as Task;
 
       (prisma.task.findFirst as jest.Mock).mockResolvedValue(mockExistingTask);
       (prisma.task.update as jest.Mock).mockResolvedValue(expectedTask);
@@ -345,46 +488,60 @@ describe("Task Service", () => {
 
       expect(prisma.task.findFirst).toHaveBeenCalledWith({
         where: { id: taskId, userId: userId },
+        include: { user: { select: { email: true } } },
       });
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: taskId },
         data: updateData,
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
       expect(result).toEqual(expectedTask);
     });
 
-    it("should return null if task to update is not found", async () => {
+    it("should return null if task to update is not found or not owned by user", async () => {
       const taskId = "non-existent-id";
+      const userId = "usr-1";
       const updateData = { title: "Updated Task" };
-      (prisma.task.update as jest.Mock).mockRejectedValue({ code: "P2025" });
+      (prisma.task.findFirst as jest.Mock).mockResolvedValue(null);
 
-      const result = await updateTask(taskId, updateData, "usr-1");
-      expect(prisma.task.update).toHaveBeenCalledWith({
-        where: { id: taskId },
-        data: updateData,
+      const result = await updateTask(taskId, updateData, userId);
+      expect(prisma.task.findFirst).toHaveBeenCalledWith({
+        where: { id: taskId, userId: userId },
+        include: { user: { select: { email: true } } },
       });
+      expect(prisma.task.update).not.toHaveBeenCalled();
       expect(result).toBeNull();
     });
 
-    it("should throw an error for other errors during update", async () => {
+    it("should throw an error for other errors during update if task is found", async () => {
       const taskId = "1";
+      const userId = "usr-1";
       const updateData = { title: "Updated Task" };
+      const mockExistingTask = {
+        id: taskId,
+        userId: userId,
+        user: { email: "owner@example.com" },
+      };
       const error = new Error("Some other error");
+
+      (prisma.task.findFirst as jest.Mock).mockResolvedValue(mockExistingTask);
       (prisma.task.update as jest.Mock).mockRejectedValue(error);
 
-      await expect(updateTask(taskId, updateData, "usr-1")).rejects.toThrow(
+      await expect(updateTask(taskId, updateData, userId)).rejects.toThrow(
         "Some other error"
       );
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: taskId },
         data: updateData,
+        include: { invitee: { select: mockSelectInviteeFields } },
       });
     });
   });
 
   describe("deleteTask", () => {
-    it("should delete an existing task", async () => {
+    it("should delete an existing task by owner", async () => {
       const taskId = "1";
+      const userId = "usr-1";
       const expectedTask: Task = {
         id: taskId,
         title: "Test Task",
@@ -392,36 +549,33 @@ describe("Task Service", () => {
         completed: false,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: "usr-1",
+        userId: userId,
+        inviteeId: null,
       };
+      (prisma.task.findFirst as jest.Mock).mockResolvedValue(expectedTask);
       (prisma.task.delete as jest.Mock).mockResolvedValue(expectedTask);
 
-      const result = await deleteTask(taskId, "usr-1");
+      const result = await deleteTask(taskId, userId);
+      expect(prisma.task.findFirst).toHaveBeenCalledWith({
+        where: { id: taskId, userId: userId },
+      });
       expect(prisma.task.delete).toHaveBeenCalledWith({
         where: { id: taskId },
       });
       expect(result).toEqual(expectedTask);
     });
 
-    it("should return null if task to delete is not found", async () => {
+    it("should return null if task to delete is not found or not owned by user", async () => {
       const taskId = "non-existent-id";
-      (prisma.task.delete as jest.Mock).mockRejectedValue({ code: "P2025" });
+      const userId = "usr-1";
+      (prisma.task.findFirst as jest.Mock).mockResolvedValue(null);
 
-      const result = await deleteTask(taskId, "usr-1");
-      expect(prisma.task.delete).toHaveBeenCalledWith({
-        where: { id: taskId },
+      const result = await deleteTask(taskId, userId);
+      expect(prisma.task.findFirst).toHaveBeenCalledWith({
+        where: { id: taskId, userId: userId },
       });
+      expect(prisma.task.delete).not.toHaveBeenCalled();
       expect(result).toBeNull();
-    });
-
-    it("should throw an error for other errors during delete", async () => {
-      const taskId = "1";
-      (prisma.task.delete as jest.Mock).mockResolvedValue(null);
-
-      await deleteTask(taskId, "usr-1");
-      expect(prisma.task.delete).toHaveBeenCalledWith({
-        where: { id: taskId },
-      });
     });
   });
 });

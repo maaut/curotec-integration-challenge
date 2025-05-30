@@ -58,12 +58,18 @@ export const taskIdSchema = z.object({
 
 export const toggleTaskSchema = z.object({
   params: z.object({
-    id: z.string({ required_error: "Task ID is required in params" }),
+    id: z.string().uuid({ message: "Task ID must be a valid UUID" }),
   }),
   body: z.object({
-    completed: z.boolean({
-      required_error: "Completed status is required",
-      invalid_type_error: "Completed status must be a boolean",
-    }),
+    completed: z.boolean({ required_error: "Completed status is required" }),
+  }),
+});
+
+export const inviteTaskSchema = z.object({
+  params: z.object({
+    id: z.string().uuid({ message: "Task ID must be a valid UUID" }),
+  }),
+  body: z.object({
+    inviteeEmail: z.string().email({ message: "Invalid invitee email format" }),
   }),
 });

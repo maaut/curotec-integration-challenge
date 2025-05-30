@@ -174,7 +174,6 @@ export const toggleTaskCompletionController = async (
   const { id: taskId } = req.params;
   const { completed } = req.body;
 
-  // Basic validation, though Zod schema will handle it more robustly
   if (typeof completed !== "boolean") {
     res.status(400).json({ error: "'completed' must be a boolean" });
     return;
@@ -198,6 +197,86 @@ export const toggleTaskCompletionController = async (
       error.message || error
     );
     res.status(500).json({ error: "Failed to toggle task completion" });
+    return;
+  }
+};
+
+export const inviteToTaskController = async (
+  req: Request<{ id: string }, {}, { inviteeEmail: string }>,
+  res: Response
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const ownerId = req.user.id;
+  const { id: taskId } = req.params;
+  const { inviteeEmail } = req.body;
+
+  try {
+    const task = await TaskService.inviteUserToTask(
+      taskId,
+      ownerId,
+      inviteeEmail
+    );
+    if (task) {
+      res.json(task);
+    } else {
+      res.status(404).json({ error: "Task not found or operation failed" });
+    }
+    return;
+  } catch (error: any) {
+    console.error(
+      "Controller - Failed to invite user to task:",
+      error.message || error
+    );
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("not the owner")
+    ) {
+      res.status(404).json({ error: error.message });
+    } else if (error.message.includes("Cannot invite")) {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: "Failed to invite user to task" });
+    }
+    return;
+  }
+};
+
+export const uninviteFromTaskController = async (
+  req: Request<{ id: string }>,
+  res: Response
+): Promise<void> => {
+  if (!req.user || !req.user.id) {
+    res.status(401).json({ error: "User not authenticated" });
+    return;
+  }
+  const ownerId = req.user.id;
+  const { id: taskId } = req.params;
+
+  try {
+    const task = await TaskService.uninviteUserFromTask(taskId, ownerId);
+    if (task) {
+      res.json(task);
+    } else {
+      res.status(404).json({ error: "Task not found or operation failed" });
+    }
+    return;
+  } catch (error: any) {
+    console.error(
+      "Controller - Failed to uninvite user from task:",
+      error.message || error
+    );
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("not the owner") ||
+      error.message.includes("No user is currently invited")
+    ) {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: "Failed to uninvite user from task" });
+    }
     return;
   }
 };

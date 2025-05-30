@@ -103,6 +103,7 @@ describe("Task Controller", () => {
             createdAt: new Date(),
             updatedAt: new Date(),
             userId: userId,
+            inviteeId: null,
           },
         ],
         total: 1,
