@@ -30,7 +30,6 @@ class WebSocketService {
 
   public connect(token: string): void {
     if (this.socket?.connected) {
-      console.log("WebSocket already connected, skipping connection");
       return;
     }
 
@@ -72,20 +71,12 @@ class WebSocketService {
   }
 
   public onNotification(callback: NotificationCallback): () => void {
-    console.log(
-      "📝 Registering notification callback. Total callbacks:",
-      this.callbacks.length + 1
-    );
     this.callbacks.push(callback);
 
     return () => {
       const index = this.callbacks.indexOf(callback);
       if (index > -1) {
         this.callbacks.splice(index, 1);
-        console.log(
-          "🗑️ Unregistered notification callback. Remaining callbacks:",
-          this.callbacks.length
-        );
       }
     };
   }

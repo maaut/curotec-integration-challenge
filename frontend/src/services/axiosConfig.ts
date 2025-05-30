@@ -17,7 +17,6 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Optional: Interceptor to handle 401 errors (e.g., redirect to login)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -26,7 +25,11 @@ apiClient.interceptors.response.use(
 
       console.error("Unauthorized, logging out.");
     }
-    return Promise.reject(error);
+    const formattedError = {
+      ...error,
+      message: error.response?.data?.error || error.message,
+    };
+    return Promise.reject(new Error(formattedError.message));
   }
 );
 

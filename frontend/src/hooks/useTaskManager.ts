@@ -1,20 +1,21 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { message } from "antd";
 import {
   fetchTasks,
   createTask,
   updateTask,
   deleteTask,
-  toggleTaskCompletion,
   inviteUserToTask,
   uninviteUserFromTask,
 } from "../services/taskApi";
 import type { Task, GetAllTasksParams } from "../types/task.types";
 import { useAuth } from "../providers/AuthContext";
 
-export interface TasksManagerState extends GetAllTasksParams {
+export interface TasksManagerState {
   totalTasks: number;
   totalPages: number;
+  currentPage: number;
+  currentLimit: number;
 }
 
 export const useTaskManager = () => {
@@ -24,33 +25,31 @@ export const useTaskManager = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const [tasksState, setTasksStateInternal] = useState<TasksManagerState>({
-    page: 1,
-    limit: 10,
-    sortBy: "createdAt",
-    sortOrder: "desc",
-    completed: "all",
-    search: "",
     totalTasks: 0,
     totalPages: 0,
+    currentPage: 1,
+    currentLimit: 10,
   });
+
+  const isFetchingRef = useRef(false);
 
   const setTasksState = (newState: Partial<TasksManagerState>) => {
     setTasksStateInternal((prevState) => ({ ...prevState, ...newState }));
   };
 
   const fetchTasksInternal = useCallback(
-    async (newState?: Partial<TasksManagerState>) => {
-      if (!user) return;
+    async (params?: GetAllTasksParams) => {
+      if (!user || isFetchingRef.current) return;
+
+      isFetchingRef.current = true;
       setLoading(true);
-      const currentState = { ...tasksState, ...newState };
 
       const apiParams: GetAllTasksParams = {
-        page: currentState.page,
-        limit: currentState.limit,
-        sortBy: currentState.sortBy,
-        sortOrder: currentState.sortOrder,
-        completed: currentState.completed,
-        search: currentState.search,
+        page: 1,
+        limit: 10,
+        sortBy: "createdAt",
+        sortOrder: "desc",
+        ...params,
       };
 
       if (!apiParams.search) delete apiParams.search;
@@ -60,22 +59,22 @@ export const useTaskManager = () => {
         const response = await fetchTasks(apiParams);
         setTasks(response.tasks);
 
-        setTasksStateInternal((prev) => ({
-          ...prev,
-          ...newState,
+        setTasksStateInternal({
           totalTasks: response.total,
           totalPages: response.totalPages,
-          page: response.page,
-          limit: response.limit,
-        }));
+          currentPage: response.page,
+          currentLimit: response.limit,
+        });
       } catch (e) {
         const errorMessage =
           e instanceof Error ? e.message : "Failed to fetch tasks";
         messageApi.error(errorMessage);
+      } finally {
+        setLoading(false);
+        isFetchingRef.current = false;
       }
-      setLoading(false);
     },
-    [tasksState, messageApi, user]
+    [messageApi, user]
   );
 
   const addTaskInternal = async (
@@ -87,6 +86,7 @@ export const useTaskManager = () => {
       inviteeEmail?: string;
     }
   ) => {
+    if (loading) return;
     setLoading(true);
     try {
       await createTask(taskData);
@@ -111,6 +111,7 @@ export const useTaskManager = () => {
       >
     >
   ) => {
+    if (loading) return;
     setLoading(true);
     try {
       await updateTask(taskId, taskData);
@@ -127,6 +128,7 @@ export const useTaskManager = () => {
   };
 
   const deleteTaskInternal = async (id: string) => {
+    if (loading) return;
     setLoading(true);
     try {
       await deleteTask(id);
@@ -167,17 +169,7 @@ export const useTaskManager = () => {
     );
 
     try {
-      if (tasksState.completed !== "all") {
-        fetchTasksInternal();
-      } else {
-        const updatedTaskFromApi = await toggleTaskCompletion(
-          id,
-          optimisticallyUpdatedTask.completed
-        );
-        setTasks((prevTasks) =>
-          prevTasks.map((task) => (task.id === id ? updatedTaskFromApi : task))
-        );
-      }
+      fetchTasksInternal();
     } catch (e: unknown) {
       setTasks((prevTasks) =>
         prevTasks.map((task) => (task.id === id ? taskToToggle : task))
@@ -190,6 +182,7 @@ export const useTaskManager = () => {
   };
 
   const inviteToTaskInternal = async (taskId: string, inviteeEmail: string) => {
+    if (loading) return;
     setLoading(true);
     try {
       const updatedTask = await inviteUserToTask(taskId, inviteeEmail);
@@ -206,6 +199,7 @@ export const useTaskManager = () => {
   };
 
   const uninviteFromTaskInternal = async (taskId: string) => {
+    if (loading) return;
     setLoading(true);
     try {
       const updatedTask = await uninviteUserFromTask(taskId);

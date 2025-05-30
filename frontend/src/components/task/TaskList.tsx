@@ -52,10 +52,14 @@ const TaskList: React.FC = () => {
     toggleComplete,
     inviteToTask,
     uninviteFromTask,
-    setTasksState,
   } = useTasks();
 
   const { user } = useAuth();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [completedFilter, setCompletedFilter] = useState<
+    "all" | "true" | "false"
+  >("all");
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [addForm] = Form.useForm<AddTaskFormValues>();
@@ -66,9 +70,14 @@ const TaskList: React.FC = () => {
   const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
   const [invitingTask, setInvitingTask] = useState<Task | null>(null);
 
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    if (!hasInitiallyLoaded) {
+      fetchTasks();
+      setHasInitiallyLoaded(true);
+    }
+  }, [fetchTasks, hasInitiallyLoaded]);
 
   const showAddModal = () => {
     setIsAddModalVisible(true);
@@ -119,7 +128,6 @@ const TaskList: React.FC = () => {
 
   const handleUninviteUser = async (taskId: string) => {
     await uninviteFromTask(taskId);
-    fetchTasks();
   };
 
   useEffect(() => {
@@ -148,19 +156,18 @@ const TaskList: React.FC = () => {
       }
     }
 
-    setTasksState(newParams);
     fetchTasks(newParams);
   };
 
   const handleSearch = (value: string) => {
     const newParams = { search: value, page: 1 };
-    setTasksState(newParams);
+    setSearchTerm(value);
     fetchTasks(newParams);
   };
 
   const handleStatusFilterChange = (value: "all" | "true" | "false") => {
     const newParams = { completed: value, page: 1 };
-    setTasksState(newParams);
+    setCompletedFilter(value);
     fetchTasks(newParams);
   };
 
@@ -280,10 +287,10 @@ const TaskList: React.FC = () => {
           onSearch={handleSearch}
           style={{ width: 200 }}
           allowClear
-          defaultValue={tasksState.search}
+          defaultValue={searchTerm}
         />
         <Select
-          defaultValue={tasksState.completed || "all"}
+          defaultValue={completedFilter || "all"}
           style={{ width: 120 }}
           onChange={handleStatusFilterChange}
         >
@@ -301,8 +308,8 @@ const TaskList: React.FC = () => {
         rowHoverable={false}
         rowClassName={(record) => (record.completed ? "completed-row" : "")}
         pagination={{
-          current: tasksState.page,
-          pageSize: tasksState.limit,
+          current: tasksState.currentPage,
+          pageSize: tasksState.currentLimit,
           total: tasksState.totalTasks,
           showSizeChanger: true,
           pageSizeOptions: ["5", "10", "20", "50"],

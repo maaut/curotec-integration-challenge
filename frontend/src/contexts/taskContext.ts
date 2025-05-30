@@ -1,12 +1,13 @@
 import { createContext } from "react";
 import type { Task } from "../types/task.types";
 import type { TasksManagerState } from "../hooks/useTaskManager";
+import type { GetAllTasksParams } from "../types/task.types";
 
 export interface TaskContextType {
   tasks: Task[];
   loading: boolean;
   tasksState: TasksManagerState;
-  fetchTasks: (newState?: Partial<TasksManagerState>) => Promise<void>;
+  fetchTasks: (params?: GetAllTasksParams) => Promise<void>;
   addTask: (
     taskData: Omit<
       Task,
