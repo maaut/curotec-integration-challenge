@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Layout, Button, Space, Switch, theme } from "antd";
-import { useAuth } from "../../providers/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { SunOutlined, MoonOutlined } from "@ant-design/icons";
 
 const { Header } = Layout;

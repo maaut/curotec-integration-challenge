@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../providers/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import { Spin, Layout } from "antd";
 
 const { Content } = Layout;

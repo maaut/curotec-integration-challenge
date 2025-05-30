@@ -27,7 +27,7 @@ import type { SorterResult, FilterValue } from "antd/es/table/interface";
 import EditTaskModal, {
   type TaskFormValues as EditTaskFormValues,
 } from "./modals/EditTaskModal";
-import { useAuth } from "../../providers/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import InviteUserModal from "./modals/InviteUserModal";
 import AddTaskModal from "./modals/AddTaskModal";
 

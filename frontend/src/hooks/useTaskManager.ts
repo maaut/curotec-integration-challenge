@@ -9,7 +9,7 @@ import {
   uninviteUserFromTask,
 } from "../services/taskApi";
 import type { Task, GetAllTasksParams } from "../types/task.types";
-import { useAuth } from "../providers/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 export interface TasksManagerState {
   totalTasks: number;

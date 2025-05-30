@@ -2,7 +2,7 @@ import { useEffect, useCallback } from "react";
 import { message } from "antd";
 import { webSocketService } from "../services/websocket.service";
 import type { NotificationData } from "../services/websocket.service";
-import { useAuth } from "../providers/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 export const useWebSocketNotifications = (fetchTasks?: () => Promise<void>) => {
   const { token } = useAuth();

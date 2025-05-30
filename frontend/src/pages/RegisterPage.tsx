@@ -1,7 +1,7 @@
 import React from "react";
 import { Form, Input, Button, Typography, Card, Row, Col } from "antd";
 import { MailOutlined, LockOutlined } from "@ant-design/icons";
-import { useAuth } from "../providers/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import type { RegisterDto } from "../services/authApi";
 

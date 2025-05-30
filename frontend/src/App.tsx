@@ -11,7 +11,7 @@ import TaskListPage from "./pages/task/TaskListPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { useAuth } from "./providers/AuthContext";
+import { useAuth } from "./hooks/useAuth";
 import AppHeader from "./components/layout/AppHeader.tsx";
 
 const { Content, Footer } = Layout;
