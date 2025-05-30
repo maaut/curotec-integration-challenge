@@ -5,6 +5,11 @@ export interface Task {
   completed: boolean;
   createdAt: string;
   updatedAt: string;
+  userId: string;
+  invitee?: {
+    id: string;
+    email: string;
+  } | null;
 }
 
 export interface GetAllTasksParams {

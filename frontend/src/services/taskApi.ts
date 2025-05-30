@@ -17,6 +17,7 @@ export const fetchTasks = async (
 export const createTask = async (taskData: {
   title: string;
   description?: string;
+  inviteeEmail?: string;
 }): Promise<Task> => {
   const response = await apiClient.post<Task>("/tasks", taskData);
   return response.data;
@@ -24,16 +25,13 @@ export const createTask = async (taskData: {
 
 export const updateTask = async (
   id: string,
-  taskData: Partial<Task>
+  taskData: Partial<
+    Omit<Task, "id" | "createdAt" | "updatedAt" | "userId" | "invitee"> & {
+      inviteeEmail?: string | null;
+    }
+  >
 ): Promise<Task> => {
-  const {
-    id: taskId,
-    createdAt,
-    updatedAt,
-    userId,
-    ...restOfTaskData
-  } = taskData as any;
-  const response = await apiClient.put<Task>(`/tasks/${id}`, restOfTaskData);
+  const response = await apiClient.put<Task>(`/tasks/${id}`, taskData);
   return response.data;
 };
 
@@ -53,5 +51,20 @@ export const toggleTaskCompletion = async (
 
 export const getTaskById = async (id: string): Promise<Task> => {
   const response = await apiClient.get<Task>(`/tasks/${id}`);
+  return response.data;
+};
+
+export const inviteUserToTask = async (
+  taskId: string,
+  inviteeEmail: string
+): Promise<Task> => {
+  const response = await apiClient.post<Task>(`/tasks/${taskId}/invite`, {
+    inviteeEmail,
+  });
+  return response.data;
+};
+
+export const uninviteUserFromTask = async (taskId: string): Promise<Task> => {
+  const response = await apiClient.delete<Task>(`/tasks/${taskId}/uninvite`);
   return response.data;
 };

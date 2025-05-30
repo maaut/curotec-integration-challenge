@@ -6,8 +6,11 @@ import {
   updateTask,
   deleteTask,
   toggleTaskCompletion,
+  inviteUserToTask,
+  uninviteUserFromTask,
 } from "../services/taskApi";
 import type { Task, GetAllTasksParams } from "../types/task.types";
+import { useAuth } from "../providers/AuthContext";
 
 export interface TasksManagerState extends GetAllTasksParams {
   totalTasks: number;
@@ -16,9 +19,9 @@ export interface TasksManagerState extends GetAllTasksParams {
 
 export const useTaskManager = () => {
   const [messageApi, contextHolder] = message.useMessage();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [tasksState, setTasksStateInternal] = useState<TasksManagerState>({
     page: 1,
@@ -37,8 +40,8 @@ export const useTaskManager = () => {
 
   const fetchTasksInternal = useCallback(
     async (newState?: Partial<TasksManagerState>) => {
+      if (!user) return;
       setLoading(true);
-      setError(null);
       const currentState = { ...tasksState, ...newState };
 
       const apiParams: GetAllTasksParams = {
@@ -56,6 +59,7 @@ export const useTaskManager = () => {
       try {
         const response = await fetchTasks(apiParams);
         setTasks(response.tasks);
+
         setTasksStateInternal((prev) => ({
           ...prev,
           ...newState,
@@ -67,21 +71,23 @@ export const useTaskManager = () => {
       } catch (e) {
         const errorMessage =
           e instanceof Error ? e.message : "Failed to fetch tasks";
-        setError(errorMessage);
         messageApi.error(errorMessage);
       }
       setLoading(false);
     },
-    [tasksState, messageApi]
+    [tasksState, messageApi, user]
   );
 
   const addTaskInternal = async (
-    taskData: Omit<Task, "id" | "completed" | "createdAt" | "updatedAt"> & {
+    taskData: Omit<
+      Task,
+      "id" | "completed" | "createdAt" | "updatedAt" | "userId" | "invitee"
+    > & {
       description?: string;
+      inviteeEmail?: string;
     }
   ) => {
     setLoading(true);
-    setError(null);
     try {
       await createTask(taskData);
       messageApi.success("Task added successfully!");
@@ -89,33 +95,36 @@ export const useTaskManager = () => {
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Failed to add task";
-      setError(errorMessage);
       messageApi.error(errorMessage);
       throw e;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const updateTaskInternal = async (updatedTaskData: Task) => {
+  const updateTaskInternal = async (
+    taskId: string,
+    taskData: Partial<
+      Omit<Task, "id" | "createdAt" | "updatedAt" | "userId" | "invitee">
+    > & { inviteeEmail?: string | null }
+  ) => {
     setLoading(true);
-    setError(null);
     try {
-      await updateTask(updatedTaskData.id, updatedTaskData);
+      await updateTask(taskId, taskData);
       messageApi.success("Task updated successfully!");
       fetchTasksInternal();
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Failed to update task";
-      setError(errorMessage);
       messageApi.error(errorMessage);
       throw e;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const deleteTaskInternal = async (id: string) => {
     setLoading(true);
-    setError(null);
     try {
       await deleteTask(id);
       messageApi.success("Task deleted successfully!");
@@ -123,16 +132,25 @@ export const useTaskManager = () => {
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : "Failed to delete task";
-      setError(errorMessage);
       messageApi.error(errorMessage);
       throw e;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const toggleCompleteInternal = async (id: string) => {
     const taskToToggle = tasks.find((task) => task.id === id);
-    if (!taskToToggle) return;
+
+    if (!taskToToggle) {
+      messageApi.error("Task not found for toggling.");
+      return;
+    }
+
+    if (taskToToggle.userId !== user?.id) {
+      messageApi.error("You are not the owner of this task.");
+      return;
+    }
 
     const optimisticallyUpdatedTask = {
       ...taskToToggle,
@@ -146,14 +164,16 @@ export const useTaskManager = () => {
     );
 
     try {
-      await toggleTaskCompletion(id, optimisticallyUpdatedTask.completed);
-      messageApi.success(
-        optimisticallyUpdatedTask.completed
-          ? "Task marked as complete!"
-          : "Task marked as incomplete!"
-      );
       if (tasksState.completed !== "all") {
         fetchTasksInternal();
+      } else {
+        const updatedTaskFromApi = await toggleTaskCompletion(
+          id,
+          optimisticallyUpdatedTask.completed
+        );
+        setTasks((prevTasks) =>
+          prevTasks.map((task) => (task.id === id ? updatedTaskFromApi : task))
+        );
       }
     } catch (e: unknown) {
       setTasks((prevTasks) =>
@@ -161,16 +181,46 @@ export const useTaskManager = () => {
       );
       const errorMessage =
         e instanceof Error ? e.message : "Failed to toggle task completion";
-      setError(errorMessage);
       messageApi.error(errorMessage);
       throw e;
+    }
+  };
+
+  const inviteToTaskInternal = async (taskId: string, inviteeEmail: string) => {
+    setLoading(true);
+    try {
+      const updatedTask = await inviteUserToTask(taskId, inviteeEmail);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+      messageApi.success(`User ${inviteeEmail} invited to task successfully!`);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to invite user to task";
+      messageApi.error(errorMessage);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const uninviteFromTaskInternal = async (taskId: string) => {
+    setLoading(true);
+    try {
+      const updatedTask = await uninviteUserFromTask(taskId);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updatedTask : t)));
+      messageApi.success("User uninvited from task successfully!");
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to uninvite user from task";
+      messageApi.error(errorMessage);
+      throw e;
+    } finally {
+      setLoading(false);
     }
   };
 
   return {
     tasks,
     loading,
-    error,
     tasksState,
     contextHolder,
     fetchTasks: fetchTasksInternal,
@@ -179,5 +229,7 @@ export const useTaskManager = () => {
     deleteTask: deleteTaskInternal,
     toggleComplete: toggleCompleteInternal,
     setTasksState,
+    inviteToTask: inviteToTaskInternal,
+    uninviteFromTask: uninviteFromTaskInternal,
   };
 };

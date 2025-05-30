@@ -1,7 +1,7 @@
 import React from "react";
 import { List, Button, Checkbox, Typography, Popconfirm } from "antd";
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { useTasks } from "../../providers/TaskContext";
+import { useTasks } from "../../hooks/useTasks";
 import type { Task } from "../../types/task.types";
 
 const { Text } = Typography;

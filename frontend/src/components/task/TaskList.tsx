@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   Table,
   Spin,
-  Alert,
   Typography,
   Button,
   Modal,
@@ -11,10 +10,11 @@ import {
   Space,
   Select,
   Popconfirm,
-  Checkbox,
+  Tag,
+  Switch,
 } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import { useTasks } from "../../providers/TaskContext";
+import { useTasks } from "../../hooks/useTasks";
 
 import type { Task, GetAllTasksParams } from "../../types/task.types";
 import type { TableProps, TablePaginationConfig } from "antd/es/table";
@@ -22,6 +22,7 @@ import type { SorterResult, FilterValue } from "antd/es/table/interface";
 import EditTaskModal, {
   type TaskFormValues as EditTaskFormValues,
 } from "./EditTaskModal";
+import { useAuth } from "../../providers/AuthContext";
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -34,9 +35,8 @@ interface AddTaskFormValues {
 
 const TaskList: React.FC = () => {
   const {
-    tasks,
     loading,
-    error,
+    tasks,
     tasksState,
     fetchTasks,
     addTask,
@@ -45,6 +45,7 @@ const TaskList: React.FC = () => {
     toggleComplete,
     setTasksState,
   } = useTasks();
+  const { user } = useAuth();
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [addForm] = Form.useForm<AddTaskFormValues>();
@@ -81,7 +82,9 @@ const TaskList: React.FC = () => {
 
   const handleUpdateTask = async (values: EditTaskFormValues) => {
     if (editingTask) {
-      await updateTask({ ...editingTask, ...values });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { userId: _, ...taskData } = editingTask;
+      await updateTask(editingTask.id, { ...taskData, ...values });
     }
     setIsEditModalVisible(false);
   };
@@ -130,15 +133,18 @@ const TaskList: React.FC = () => {
 
   const columns: TableProps<Task>["columns"] = [
     {
-      title: "Status",
+      title: "Completed",
       dataIndex: "completed",
       key: "completed",
       width: 100,
       render: (completed: boolean, record: Task) => (
-        <Checkbox
+        <Switch
           checked={completed}
           onChange={() => toggleComplete(record.id)}
-          disabled={loading}
+          disabled={loading || record.userId !== user?.id}
+          style={{
+            backgroundColor: completed ? "green" : "#f0f2f5",
+          }}
         />
       ),
     },
@@ -159,6 +165,18 @@ const TaskList: React.FC = () => {
       key: "createdAt",
       sorter: true,
       render: (text: string) => new Date(text).toLocaleDateString(),
+    },
+    {
+      title: "Ownership",
+      dataIndex: "userId",
+      key: "userId",
+      render: (userId: string) => {
+        return (
+          <Tag color={userId === user?.id ? "blue" : "orange"}>
+            {userId === user?.id ? "Owner" : "Invitee"}
+          </Tag>
+        );
+      },
     },
     {
       title: "Actions",
@@ -190,18 +208,6 @@ const TaskList: React.FC = () => {
       <Spin
         tip="Loading tasks..."
         style={{ display: "block", marginTop: "20px" }}
-      />
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert
-        message="Error"
-        description={error}
-        type="error"
-        showIcon
-        style={{ marginTop: "20px" }}
       />
     );
   }
@@ -246,6 +252,8 @@ const TaskList: React.FC = () => {
         dataSource={tasks}
         rowKey="id"
         loading={loading}
+        rowHoverable={false}
+        rowClassName={(record) => (record.completed ? "completed-row" : "")}
         pagination={{
           current: tasksState.page,
           pageSize: tasksState.limit,
