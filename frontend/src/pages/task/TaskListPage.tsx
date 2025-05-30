@@ -1,14 +1,27 @@
 import React from "react";
-import { Layout } from "antd";
-import "./TaskListPage.css";
+import { Layout, theme } from "antd";
+// import "./TaskListPage.css";
 import TaskList from "../../components/task/TaskList";
 
 const { Content } = Layout;
+const { useToken } = theme;
 
 const TaskListPage: React.FC = () => {
+  const { token } = useToken();
+
   return (
-    <Layout className="task-list-page-layout">
-      <Content className="task-list-page-content">
+    <Layout
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        backgroundColor: token.colorBgContainer,
+      }}
+    >
+      <Content
+        style={{
+          padding: "24px",
+        }}
+      >
         <TaskList />
       </Content>
     </Layout>
