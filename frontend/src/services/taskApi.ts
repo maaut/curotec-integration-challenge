@@ -26,9 +26,10 @@ export const createTask = async (taskData: {
 export const updateTask = async (
   id: string,
   taskData: Partial<
-    Omit<Task, "id" | "createdAt" | "updatedAt" | "userId" | "invitee"> & {
-      inviteeEmail?: string | null;
-    }
+    Omit<
+      Task,
+      "id" | "createdAt" | "updatedAt" | "userId" | "invitee" | "inviteeEmail"
+    >
   >
 ): Promise<Task> => {
   const response = await apiClient.put<Task>(`/tasks/${id}`, taskData);

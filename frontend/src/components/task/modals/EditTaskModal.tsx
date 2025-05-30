@@ -1,12 +1,11 @@
 import React, { useEffect } from "react";
 import { Modal, Form, Input, Button, Checkbox } from "antd";
-import type { Task } from "../../types/task.types";
+import type { Task } from "../../../types/task.types";
 
 export interface TaskFormValues {
   title: string;
   description: string;
   completed: boolean;
-  inviteeEmail?: string | null;
 }
 
 interface EditTaskModalProps {
@@ -32,7 +31,6 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         title: task.title,
         description: task.description || "",
         completed: task.completed,
-        inviteeEmail: task.invitee?.email || null,
       });
     } else if (!visible) {
       form.resetFields();
@@ -42,7 +40,6 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       await onUpdate(values);
     } catch (error) {
       console.error("Validation Failed:", error);
@@ -79,26 +76,8 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
         >
           <Input />
         </Form.Item>
-        <Form.Item
-          name="description"
-          label="Description"
-          rules={[
-            {
-              required: true,
-              message: "Please input the description of the task!",
-            },
-          ]}
-        >
+        <Form.Item name="description" label="Description">
           <Input.TextArea rows={4} />
-        </Form.Item>
-        <Form.Item
-          name="inviteeEmail"
-          label="Invitee Email (optional)"
-          rules={[
-            { type: "email", message: "Please enter a valid email address." },
-          ]}
-        >
-          <Input placeholder="collaborator@example.com (leave blank to remove/keep unassigned)" />
         </Form.Item>
         <Form.Item name="completed" valuePropName="checked">
           <Checkbox>Completed</Checkbox>

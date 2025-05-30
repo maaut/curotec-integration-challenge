@@ -105,8 +105,11 @@ export const useTaskManager = () => {
   const updateTaskInternal = async (
     taskId: string,
     taskData: Partial<
-      Omit<Task, "id" | "createdAt" | "updatedAt" | "userId" | "invitee">
-    > & { inviteeEmail?: string | null }
+      Omit<
+        Task,
+        "id" | "createdAt" | "updatedAt" | "userId" | "invitee" | "inviteeEmail"
+      >
+    >
   ) => {
     setLoading(true);
     try {

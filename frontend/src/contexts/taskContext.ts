@@ -19,8 +19,11 @@ export interface TaskContextType {
   updateTask: (
     taskId: string,
     taskData: Partial<
-      Omit<Task, "id" | "createdAt" | "updatedAt" | "userId" | "invitee">
-    > & { inviteeEmail?: string | null }
+      Omit<
+        Task,
+        "id" | "createdAt" | "updatedAt" | "userId" | "invitee" | "inviteeEmail"
+      >
+    >
   ) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleComplete: (id: string) => Promise<void>;

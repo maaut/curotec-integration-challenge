@@ -4,7 +4,6 @@ import {
   Spin,
   Typography,
   Button,
-  Modal,
   Form,
   Input,
   Space,
@@ -13,7 +12,13 @@ import {
   Tag,
   Switch,
 } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UserAddOutlined,
+  UserDeleteOutlined,
+} from "@ant-design/icons";
 import { useTasks } from "../../hooks/useTasks";
 
 import type { Task, GetAllTasksParams } from "../../types/task.types";
@@ -21,8 +26,10 @@ import type { TableProps, TablePaginationConfig } from "antd/es/table";
 import type { SorterResult, FilterValue } from "antd/es/table/interface";
 import EditTaskModal, {
   type TaskFormValues as EditTaskFormValues,
-} from "./EditTaskModal";
+} from "./modals/EditTaskModal";
 import { useAuth } from "../../providers/AuthContext";
+import InviteUserModal from "./modals/InviteUserModal";
+import AddTaskModal from "./modals/AddTaskModal";
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -43,6 +50,8 @@ const TaskList: React.FC = () => {
     updateTask,
     deleteTask,
     toggleComplete,
+    inviteToTask,
+    uninviteFromTask,
     setTasksState,
   } = useTasks();
   const { user } = useAuth();
@@ -52,6 +61,9 @@ const TaskList: React.FC = () => {
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const [isInviteModalVisible, setIsInviteModalVisible] = useState(false);
+  const [invitingTask, setInvitingTask] = useState<Task | null>(null);
 
   useEffect(() => {
     fetchTasks();
@@ -87,6 +99,26 @@ const TaskList: React.FC = () => {
       await updateTask(editingTask.id, { ...taskData, ...values });
     }
     setIsEditModalVisible(false);
+  };
+
+  const showInviteModal = (task: Task) => {
+    setInvitingTask(task);
+    setIsInviteModalVisible(true);
+  };
+
+  const handleInviteCancel = () => {
+    setIsInviteModalVisible(false);
+    setInvitingTask(null);
+  };
+
+  const handleInviteUser = async (taskId: string, inviteeEmail: string) => {
+    await inviteToTask(taskId, inviteeEmail);
+    handleInviteCancel();
+  };
+
+  const handleUninviteUser = async (taskId: string) => {
+    await uninviteFromTask(taskId);
+    fetchTasks();
   };
 
   useEffect(() => {
@@ -198,6 +230,19 @@ const TaskList: React.FC = () => {
           >
             <Button icon={<DeleteOutlined />} danger disabled={loading} />
           </Popconfirm>
+          {record.userId === user?.id && (
+            <Button
+              icon={
+                record.invitee ? <UserDeleteOutlined /> : <UserAddOutlined />
+              }
+              onClick={() =>
+                record.invitee
+                  ? handleUninviteUser(record.id)
+                  : showInviteModal(record)
+              }
+              disabled={loading}
+            />
+          )}
         </Space>
       ),
     },
@@ -264,58 +309,26 @@ const TaskList: React.FC = () => {
         onChange={handleTableChange}
       />
 
-      <Modal
-        title="Add New Task"
+      <AddTaskModal
+        visible={isAddModalVisible}
         onCancel={handleAddCancel}
-        open={isAddModalVisible}
-        footer={null}
-      >
-        <Form form={addForm} layout="vertical" onFinish={handleAddTask}>
-          <Form.Item
-            name="title"
-            label="Title"
-            rules={[
-              {
-                required: true,
-                message: "Please input the title of the task!",
-              },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[
-              {
-                required: true,
-                message: "Please input the description of the task!",
-              },
-            ]}
-          >
-            <Input.TextArea rows={4} />
-          </Form.Item>
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              style={{ marginRight: 8 }}
-            >
-              Add Task
-            </Button>
-            <Button onClick={handleAddCancel} disabled={loading}>
-              Cancel
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
+        onAdd={handleAddTask}
+        loading={loading}
+      />
 
       <EditTaskModal
         visible={isEditModalVisible}
         onCancel={handleEditCancel}
         onUpdate={handleUpdateTask}
         task={editingTask}
+        loading={loading}
+      />
+
+      <InviteUserModal
+        visible={isInviteModalVisible}
+        onCancel={handleInviteCancel}
+        onInvite={handleInviteUser}
+        task={invitingTask}
         loading={loading}
       />
     </div>
