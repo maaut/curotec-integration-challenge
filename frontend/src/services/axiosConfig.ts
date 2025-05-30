@@ -22,14 +22,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response && error.response.status === 401) {
-      // Token might be expired or invalid
       localStorage.removeItem("token");
-      // Optionally, redirect to login page or dispatch a logout action
-      // For example, using a global event bus or a callback passed to the interceptor
+
       console.error("Unauthorized, logging out.");
-      // window.location.href = '/login'; // This can be abrupt, consider a more integrated solution
-      // If using a state management solution that AuthContext can access (e.g. via custom event):
-      // document.dispatchEvent(new Event('auth-token-expired'));
     }
     return Promise.reject(error);
   }

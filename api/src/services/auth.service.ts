@@ -13,7 +13,7 @@ if (!JWT_SECRET) {
 
 export const registerUser = async (
   data: RegisterDto
-): Promise<Omit<User, "passwordHash">> => {
+): Promise<{ token: string; user: Omit<User, "passwordHash"> }> => {
   const { email, password } = data;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -31,9 +31,21 @@ export const registerUser = async (
     },
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash: _, ...userWithoutPassword } = newUser;
-  return userWithoutPassword;
+
+  const token = generateToken(userWithoutPassword);
+
+  return { token, user: userWithoutPassword };
+};
+
+const generateToken = (user: Omit<User, "passwordHash">) => {
+  const payload = {
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+  };
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
 };
 
 export const loginUser = async (
@@ -51,14 +63,7 @@ export const loginUser = async (
     throw new Error("Invalid credentials");
   }
 
-  const payload = {
-    user: {
-      id: user.id,
-      email: user.email,
-    },
-  };
-
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
+  const token = generateToken(user);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash: _, ...userWithoutPassword } = user;

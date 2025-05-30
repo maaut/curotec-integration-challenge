@@ -138,6 +138,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
       const data = await apiRegister(userData); // Assuming register also returns { token, user }
+
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user)); // Store user object
       setAuthState({
